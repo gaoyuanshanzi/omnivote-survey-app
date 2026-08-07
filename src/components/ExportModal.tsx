@@ -9,9 +9,9 @@ import {
   FileSpreadsheet,
   FileType,
   X,
-  Check
+  Check,
+  Printer
 } from 'lucide-react';
-import jsPDF from 'jspdf';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -157,7 +157,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
   <meta charset="UTF-8">
   <title>${project.title} - 투표 결과 & Raw Data 보고서</title>
   <style>
-    body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; line-height: 1.6; }
+    body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; line-height: 1.6; }
     .card { background: white; padding: 32px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); max-width: 1000px; margin: 0 auto; border: 1px solid #e2e8f0; }
     h1 { color: #4f46e5; margin-bottom: 8px; font-size: 24px; }
     h2 { color: #1e293b; font-size: 18px; margin-top: 32px; border-left: 4px solid #4f46e5; padding-left: 10px; }
@@ -222,6 +222,128 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
 </html>`;
   };
 
+  // Generate Print-Ready PDF Window (Fixes Korean encoding broken fonts natively)
+  const openKoreanPDFPrintWindow = () => {
+    const rawRows = (summary.rawResponses || []).map((resp, rIdx) => {
+      const items = getFormattedAnswers(resp);
+      return `
+        <tr>
+          <td style="padding:8px; font-weight:bold; color:#4338ca; text-align:center;">#${rIdx + 1}</td>
+          <td style="padding:8px; font-weight:bold; color:#0f172a;">${resp.voterName || '익명 투표자'}</td>
+          <td style="padding:8px; color:#64748b; font-size:11px;">${new Date(resp.createdAt).toLocaleString('ko-KR')}</td>
+          ${items.map(item => `<td style="padding:8px; font-weight:600; color:#334155;">${item.answer}</td>`).join('')}
+        </tr>
+      `;
+    }).join('');
+
+    const statsHtml = summary.questionStats.map((q, idx) => `
+      <div style="margin-top:16px; padding:16px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+        <h3 style="margin:0 0 10px 0; color:#1e293b; font-size:14px;">Q${idx + 1}. ${q.title}</h3>
+        ${q.type === 'MULTIPLE_CHOICE' ? `
+          <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead>
+              <tr style="background:#e2e8f0; color:#475569;">
+                <th style="padding:6px; text-align:left;">선택 항목</th>
+                <th style="padding:6px; text-align:right; width:100px;">득표 수</th>
+                <th style="padding:6px; text-align:right; width:80px;">득표율</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${q.optionCounts.map(opt => `
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:6px; font-weight:600;">${opt.text}</td>
+                  <td style="padding:6px; text-align:right; font-weight:bold; color:#4f46e5;">${opt.count}표</td>
+                  <td style="padding:6px; text-align:right; font-weight:bold; color:#059669;">${opt.percentage}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : `
+          <div style="space-y:6px;">
+            ${q.subjectiveAnswers.map(ans => `
+              <div style="background:white; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0; font-size:12px; margin-top:4px;">
+                <strong style="color:#4f46e5;">👤 ${ans.voterName || '익명'}:</strong> "${ans.text}"
+                <span style="color:#94a3b8; font-size:10px; float:right;">${new Date(ans.createdAt).toLocaleString('ko-KR')}</span>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+    `).join('');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('팝업 차단이 설정되어 있습니다. 팝업을 허용해주세요.');
+      return;
+    }
+
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>${project.title} - PDF 보고서</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+    body { font-family: 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 24px; color: #0f172a; background: #f1f5f9; }
+    .print-card { background: white; max-width: 900px; margin: 0 auto; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    h1 { color: #4f46e5; font-size: 22px; margin-bottom: 6px; font-weight: 800; }
+    h2 { color: #1e293b; font-size: 16px; margin-top: 28px; margin-bottom: 10px; border-left: 4px solid #4f46e5; padding-left: 10px; font-weight: 700; }
+    .meta { color: #64748b; font-size: 12px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; }
+    table.pdf-raw-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    table.pdf-raw-table th { background: #f1f5f9; padding: 8px; text-align: left; border-bottom: 2px solid #cbd5e1; color: #475569; font-weight: 700; }
+    table.pdf-raw-table td { border-bottom: 1px solid #e2e8f0; }
+    @media print {
+      body { padding: 0; background: white; }
+      .print-card { border: none; padding: 0; shadow: none; max-width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="max-width:900px; margin:0 auto 16px auto; display:flex; justify-content:space-between; align-items:center; background:#e0e7ff; padding:12px 20px; border-radius:12px; border:1px solid #c7d2fe;">
+    <span style="font-weight:bold; color:#3730a3; font-size:13px;">💡 PDF 저장을 위해 인쇄 창에서 대상을 'PDF로 저장'으로 선택하세요.</span>
+    <button onclick="window.print()" style="background:#4f46e5; color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:12px;">🖨️ PDF 바로 인쇄 / 저장</button>
+  </div>
+
+  <div class="print-card">
+    <h1>📊 ${project.title}</h1>
+    <div class="meta">
+      <strong>투표 상태:</strong> ${project.status} | <strong>총 응답자 수:</strong> ${summary.totalResponses} 명 | <strong>출력 일시:</strong> ${new Date().toLocaleString('ko-KR')}
+    </div>
+
+    <h2>1. 개별 응답자 Raw Data 상세 표</h2>
+    <table class="pdf-raw-table">
+      <thead>
+        <tr>
+          <th style="width:50px; text-align:center;">순번</th>
+          <th style="width:120px;">투표자 성명</th>
+          <th style="width:140px;">투표 일시</th>
+          ${project.questions.map((q, idx) => `<th>Q${idx + 1}. ${q.title}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rawRows || '<tr><td colspan="100" style="padding:20px; text-align:center; color:#94a3b8;">응답 데이터가 없습니다.</td></tr>'}
+      </tbody>
+    </table>
+
+    <h2>2. 문항별 세부 통계 집계 요약</h2>
+    ${statsHtml}
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 500);
+    };
+  </script>
+</body>
+</html>
+    `);
+    printWindow.document.close();
+  };
+
   // Download Trigger
   const handleExport = () => {
     setIsExporting(true);
@@ -238,6 +360,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         link.download = `${filename}.txt`;
         link.click();
         URL.revokeObjectURL(url);
+        onClose();
       } else if (selectedFormat === 'CSV') {
         const csvContent = generateCSV();
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -247,6 +370,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         link.download = `${filename}.csv`;
         link.click();
         URL.revokeObjectURL(url);
+        onClose();
       } else if (selectedFormat === 'HTML') {
         const htmlContent = generateHTML();
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -256,91 +380,12 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         link.download = `${filename}.html`;
         link.click();
         URL.revokeObjectURL(url);
+        onClose();
       } else if (selectedFormat === 'PDF') {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text('OmniVote Survey & Raw Data Report', 14, 20);
-        doc.setFontSize(10);
-        doc.text(`Project Title: ${project.title}`, 14, 28);
-        doc.text(`Status: ${project.status} | Total Responses: ${summary.totalResponses}`, 14, 35);
-        doc.text(`Date: ${new Date().toLocaleString()}`, 14, 42);
-
-        let yPos = 52;
-        doc.setFontSize(12);
-        doc.text('1. Raw Responses List', 14, yPos);
-        yPos += 8;
-
-        if (summary.rawResponses && summary.rawResponses.length > 0) {
-          summary.rawResponses.forEach((resp, rIdx) => {
-            if (yPos > 270) {
-              doc.addPage();
-              yPos = 20;
-            }
-            doc.setFontSize(9);
-            const voterName = resp.voterName || 'Anonymous';
-            const timeStr = new Date(resp.createdAt).toLocaleString();
-            doc.text(`#${rIdx + 1} Voter: ${voterName} (${timeStr})`, 16, yPos);
-            yPos += 5;
-
-            const items = getFormattedAnswers(resp);
-            items.forEach((item, qIdx) => {
-              if (yPos > 270) {
-                doc.addPage();
-                yPos = 20;
-              }
-              doc.text(`   Q${qIdx + 1}: ${item.answer.slice(0, 75)}`, 16, yPos);
-              yPos += 5;
-            });
-            yPos += 3;
-          });
-        }
-
-        yPos += 5;
-        if (yPos > 260) {
-          doc.addPage();
-          yPos = 20;
-        }
-
-        doc.setFontSize(12);
-        doc.text('2. Question Summary', 14, yPos);
-        yPos += 8;
-
-        summary.questionStats.forEach((q, idx) => {
-          if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-          }
-          doc.setFontSize(11);
-          doc.text(`Q${idx + 1}. ${q.title}`, 14, yPos);
-          yPos += 6;
-
-          if (q.type === 'MULTIPLE_CHOICE') {
-            q.optionCounts.forEach(opt => {
-              if (yPos > 270) {
-                doc.addPage();
-                yPos = 20;
-              }
-              doc.setFontSize(9);
-              doc.text(`- ${opt.text}: ${opt.count} votes (${opt.percentage}%)`, 20, yPos);
-              yPos += 5;
-            });
-          } else {
-            q.subjectiveAnswers.forEach(ans => {
-              if (yPos > 270) {
-                doc.addPage();
-                yPos = 20;
-              }
-              doc.setFontSize(9);
-              doc.text(`* [${ans.voterName || 'Anon'}] "${ans.text.slice(0, 65)}"`, 20, yPos);
-              yPos += 5;
-            });
-          }
-          yPos += 4;
-        });
-
-        doc.save(`${filename}.pdf`);
+        // Open Korean-compatible PDF print/save window
+        openKoreanPDFPrintWindow();
+        onClose();
       }
-      onClose();
     } catch (err) {
       console.error('Export failed:', err);
     } finally {
@@ -374,7 +419,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
             { id: 'TXT', name: 'TXT 텍스트', desc: 'Raw Data 표 포함 텍스트 보고서', icon: FileText },
-            { id: 'PDF', name: 'PDF 문서', desc: 'Raw Data 포함 PDF 문서', icon: FileType },
+            { id: 'PDF', name: 'PDF 문서 (한글 완벽지원)', desc: '한글 깨짐 없는 고품질 PDF', icon: Printer },
             { id: 'HTML', name: 'HTML 웹보고서', desc: 'Raw Data 표 포함 웹 리포트', icon: FileCode },
             { id: 'CSV', name: 'CSV 엑셀', desc: 'Raw Data 표 포함 엑셀 파일', icon: FileSpreadsheet }
           ].map(fmt => {
@@ -417,7 +462,15 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
 
         {/* Info notice */}
         <div className="mb-6 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-medium">
-          * 투표자 성명 및 선택 항목이 포함된 <span className="text-indigo-600 font-bold">Raw Data 표</span>가 파일에 함께 내보내집니다.
+          {selectedFormat === 'PDF' ? (
+            <span className="text-indigo-700 font-bold">
+              * PDF 선택 시 한글 폰트 깨짐 없는 벡터 PDF 저장 창이 생성됩니다.
+            </span>
+          ) : (
+            <span>
+              * 투표자 성명 및 선택 항목이 포함된 <span className="text-indigo-600 font-bold">Raw Data 표</span>가 파일에 내보내집니다.
+            </span>
+          )}
         </div>
 
         {/* Download Action Button */}
@@ -427,7 +480,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
         >
           <Download className="w-4 h-4" />
-          <span>{selectedFormat} Raw Data 표 포함 파일 내보내기</span>
+          <span>{selectedFormat === 'PDF' ? '한글 PDF 생성 / 저장 실행' : `${selectedFormat} 파일 다운로드 실행`}</span>
         </button>
       </div>
     </div>

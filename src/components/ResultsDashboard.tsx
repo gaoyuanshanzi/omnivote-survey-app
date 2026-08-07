@@ -65,6 +65,11 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
   useEffect(() => {
     fetchSummary();
+    const interval = setInterval(() => {
+      fetchSummary();
+      onRefreshProject?.();
+    }, 3000);
+    return () => clearInterval(interval);
   }, [project?.id]);
 
   if (!project) {
@@ -150,7 +155,10 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchSummary}
+              onClick={() => {
+                fetchSummary();
+                onRefreshProject?.();
+              }}
               className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center gap-1 transition-all shadow-2xs"
               title="데이터 새로고침"
             >

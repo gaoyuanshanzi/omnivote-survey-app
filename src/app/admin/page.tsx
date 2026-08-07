@@ -34,6 +34,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchProjects();
+    const interval = setInterval(fetchProjects, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
