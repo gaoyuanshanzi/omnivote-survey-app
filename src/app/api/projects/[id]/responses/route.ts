@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ success: false, message: '아직 게시되지 않은 투표입니다.' }, { status: 400 });
     }
 
-    const { answers } = await request.json();
+    const { answers, voterName } = await request.json();
 
     // Validate min/max selection bounds for each multiple choice question
     for (const q of project.questions) {
@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
     }
 
-    const newResponse = await submitResponse(id, answers);
+    const newResponse = await submitResponse(id, answers, voterName);
     return NextResponse.json({ success: true, message: '투표가 완료되었습니다!', response: newResponse });
   } catch (error) {
     return NextResponse.json({ success: false, message: '투표 제출 처리 중 오류가 발생했습니다.' }, { status: 500 });

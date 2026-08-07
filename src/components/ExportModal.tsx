@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ProjectItem, DashboardSummary } from '@/lib/types';
+import { ProjectItem, DashboardSummary, ResponseItem } from '@/lib/types';
 import {
   Download,
   FileText,
@@ -26,18 +26,37 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
 
   if (!isOpen) return null;
 
-  // Generate TXT Content
+  // Helper to format a single response's answers
+  const getFormattedAnswers = (resp: ResponseItem) => {
+    return project.questions.map(q => {
+      const ans = resp.answers.find(a => a.questionId === q.id);
+      if (!ans) return { qTitle: q.title, answer: '-' };
+
+      if (q.type === 'MULTIPLE_CHOICE') {
+        const texts = (ans.selectedOptions || []).map(optIdOrText => {
+          const found = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+          return found ? found.text : optIdOrText;
+        });
+        return { qTitle: q.title, answer: texts.length > 0 ? texts.join(', ') : '-' };
+      } else {
+        return { qTitle: q.title, answer: ans.textAnswer && ans.textAnswer.trim() ? ans.textAnswer : '-' };
+      }
+    });
+  };
+
+  // Generate TXT Content (Includes Raw Data Table)
   const generateTXT = () => {
     let txt = `=====================================================\n`;
-    txt += `  OMNIVOTE 투표 결과 보고서\n`;
+    txt += `  OMNIVOTE 투표 결과 & Raw Data 종합 보고서\n`;
     txt += `=====================================================\n\n`;
     txt += `프로젝트 제목: ${project.title}\n`;
     txt += `투표 상태: ${project.status}\n`;
     txt += `총 참여 인원: ${summary.totalResponses} 명\n`;
     txt += `생성 일시: ${new Date(project.createdAt).toLocaleString('ko-KR')}\n`;
     txt += `보고서 출력 시각: ${new Date().toLocaleString('ko-KR')}\n\n`;
+
     txt += `-----------------------------------------------------\n`;
-    txt += ` 문항별 세부 투표 집계\n`;
+    txt += ` 1. 문항별 세부 투표 집계 요약\n`;
     txt += `-----------------------------------------------------\n\n`;
 
     summary.questionStats.forEach((q, idx) => {
@@ -52,18 +71,56 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
       } else {
         txt += `  - 주관식 응답 목록 (${q.subjectiveAnswers.length}건):\n`;
         q.subjectiveAnswers.forEach((ans, aIdx) => {
-          txt += `    (${aIdx + 1}) "${ans.text}" [${new Date(ans.createdAt).toLocaleString('ko-KR')}]\n`;
+          txt += `    (${aIdx + 1}) [${ans.voterName || '익명'}] "${ans.text}" [${new Date(ans.createdAt).toLocaleString('ko-KR')}]\n`;
         });
       }
       txt += `\n`;
     });
 
+    txt += `-----------------------------------------------------\n`;
+    txt += ` 2. 개별 응답자 Raw Data 상세 내역 표\n`;
+    txt += `-----------------------------------------------------\n\n`;
+
+    if (!summary.rawResponses || summary.rawResponses.length === 0) {
+      txt += `(기록된 Raw Data 응답이 없습니다)\n`;
+    } else {
+      summary.rawResponses.forEach((resp, rIdx) => {
+        txt += `[응답 #${rIdx + 1}] 투표자: ${resp.voterName || '익명 투표자'} | 작성시각: ${new Date(resp.createdAt).toLocaleString('ko-KR')}\n`;
+        const items = getFormattedAnswers(resp);
+        items.forEach((item, qIdx) => {
+          txt += `  - Q${qIdx + 1} (${item.qTitle}): ${item.answer}\n`;
+        });
+        txt += `\n`;
+      });
+    }
+
     return txt;
   };
 
-  // Generate CSV Content
+  // Generate CSV Content (Raw Data Table Included)
   const generateCSV = () => {
-    let csv = `\uFEFF"문항 번호","질문 제목","질문 유형","선택 항목 / 주관식 응답","득표 수 / 응답 시각","득표율 (%)\"\n`;
+    // UTF-8 BOM for Excel compatibility
+    let csv = `\uFEFF"=== 개별 응답자 Raw Data 상세 표 ==="\n`;
+    
+    // Headers: 번호, 투표자 성명, 작성 일시, Question 1, Question 2 ...
+    const qHeaders = project.questions.map((q, idx) => `"Q${idx + 1}: ${q.title.replace(/"/g, '""')}"`).join(',');
+    csv += `"순번","투표자 성명","작성 일시",${qHeaders}\n`;
+
+    if (summary.rawResponses && summary.rawResponses.length > 0) {
+      summary.rawResponses.forEach((resp, rIdx) => {
+        const vName = `"${(resp.voterName || '익명 투표자').replace(/"/g, '""')}"`;
+        const timeStr = `"${new Date(resp.createdAt).toLocaleString('ko-KR')}"`;
+        const answersStr = getFormattedAnswers(resp)
+          .map(item => `"${item.answer.replace(/"/g, '""')}"`)
+          .join(',');
+        csv += `"${rIdx + 1}",${vName},${timeStr},${answersStr}\n`;
+      });
+    } else {
+      csv += `"1","응답 데이터 없음","-","-"\n`;
+    }
+
+    csv += `\n"=== 문항별 집계 요약 ==="\n`;
+    csv += `"문항 번호","질문 제목","질문 유형","선택 항목 / 응답","득표 수 / 응답 시각","득표율 (%)"\n`;
 
     summary.questionStats.forEach((q, idx) => {
       if (q.type === 'MULTIPLE_CHOICE') {
@@ -72,7 +129,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         });
       } else {
         q.subjectiveAnswers.forEach(ans => {
-          csv += `"Q${idx + 1}","${q.title.replace(/"/g, '""')}","주관식","${ans.text.replace(/"/g, '""')}","${new Date(ans.createdAt).toLocaleString('ko-KR')}","-"\n`;
+          csv += `"Q${idx + 1}","${q.title.replace(/"/g, '""')}","주관식","[${(ans.voterName || '익명').replace(/"/g, '""')}] ${ans.text.replace(/"/g, '""')}","${new Date(ans.createdAt).toLocaleString('ko-KR')}","-"\n`;
         });
       }
     });
@@ -80,34 +137,66 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
     return csv;
   };
 
-  // Generate HTML Report Content
+  // Generate HTML Report Content (Raw Data Table Included)
   const generateHTML = () => {
+    const rawRows = (summary.rawResponses || []).map((resp, rIdx) => {
+      const items = getFormattedAnswers(resp);
+      return `
+        <tr>
+          <td style="padding:10px; font-weight:bold; color:#4338ca;">#${rIdx + 1}</td>
+          <td style="padding:10px; font-weight:bold;">${resp.voterName || '익명 투표자'}</td>
+          <td style="padding:10px; color:#64748b; font-size:12px;">${new Date(resp.createdAt).toLocaleString('ko-KR')}</td>
+          ${items.map(item => `<td style="padding:10px;">${item.answer}</td>`).join('')}
+        </tr>
+      `;
+    }).join('');
+
     return `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>${project.title} - 투표 결과 보고서</title>
+  <title>${project.title} - 투표 결과 & Raw Data 보고서</title>
   <style>
     body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; line-height: 1.6; }
-    .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 850px; margin: 0 auto; border: 1px solid #e2e8f0; }
+    .card { background: white; padding: 32px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); max-width: 1000px; margin: 0 auto; border: 1px solid #e2e8f0; }
     h1 { color: #4f46e5; margin-bottom: 8px; font-size: 24px; }
+    h2 { color: #1e293b; font-size: 18px; margin-top: 32px; border-left: 4px solid #4f46e5; padding-left: 10px; }
     .meta { color: #64748b; font-size: 14px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; }
-    .question { margin-top: 24px; padding: 20px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0; }
-    .question h3 { margin: 0 0 12px 0; color: #1e293b; font-size: 16px; }
+    .question { margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .question h3 { margin: 0 0 12px 0; color: #1e293b; font-size: 15px; }
     .option-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
     .option-text { flex: 1; font-weight: 500; }
     .bar-bg { width: 200px; height: 12px; background: #cbd5e1; border-radius: 6px; overflow: hidden; margin: 0 12px; }
     .bar-fill { height: 100%; background: #4f46e5; border-radius: 6px; }
-    .count { width: 80px; text-align: right; font-weight: bold; color: #4338ca; }
-    .subjective-item { background: white; padding: 10px 14px; border-radius: 8px; margin-top: 6px; font-size: 13px; border: 1px solid #e2e8f0; }
+    .count { width: 90px; text-align: right; font-weight: bold; color: #4338ca; }
+    table.raw-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    table.raw-table th { background: #f1f5f9; padding: 10px; text-align: left; border-bottom: 2px solid #cbd5e1; color: #475569; }
+    table.raw-table td { border-bottom: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>📊 ${project.title}</h1>
     <div class="meta">
-      <strong>상태:</strong> ${project.status} | <strong>총 응답자 수:</strong> ${summary.totalResponses} 명 | <strong>보고서 시각:</strong> ${new Date().toLocaleString('ko-KR')}
+      <strong>투표 상태:</strong> ${project.status} | <strong>총 응답자 수:</strong> ${summary.totalResponses} 명 | <strong>보고서 출력 시각:</strong> ${new Date().toLocaleString('ko-KR')}
     </div>
+
+    <h2>1. 개별 응답자 Raw Data 표 (Raw Responses Table)</h2>
+    <table class="raw-table">
+      <thead>
+        <tr>
+          <th>순번</th>
+          <th>투표자 성명</th>
+          <th>작성 일시</th>
+          ${project.questions.map((q, idx) => `<th>Q${idx + 1}. ${q.title}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${rawRows || '<tr><td colspan="100" style="padding:20px; text-align:center; color:#94a3b8;">응답 데이터가 없습니다.</td></tr>'}
+      </tbody>
+    </table>
+
+    <h2>2. 문항별 세부 통계 집계 요약</h2>
     ${summary.questionStats.map((q, idx) => `
       <div class="question">
         <h3>Q${idx + 1}. ${q.title}</h3>
@@ -121,7 +210,9 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
           `).join('')}
         ` : `
           ${q.subjectiveAnswers.map(ans => `
-            <div class="subjective-item">💬 "${ans.text}" <span style="color:#94a3b8; font-size:11px;">(${new Date(ans.createdAt).toLocaleString('ko-KR')})</span></div>
+            <div style="background:white; padding:10px 14px; border-radius:8px; margin-top:6px; font-size:13px; border:1px solid #e2e8f0;">
+              <strong>👤 ${ans.voterName || '익명'}:</strong> "${ans.text}" <span style="color:#94a3b8; font-size:11px;">(${new Date(ans.createdAt).toLocaleString('ko-KR')})</span>
+            </div>
           `).join('')}
         `}
       </div>
@@ -135,7 +226,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
   const handleExport = () => {
     setIsExporting(true);
     const sanitizedTitle = project.title.replace(/[^a-zA-Z0-9가-힣]/g, '_');
-    const filename = `${sanitizedTitle}_투표결과_${new Date().toISOString().slice(0, 10)}`;
+    const filename = `${sanitizedTitle}_투표결과_RawData_${new Date().toISOString().slice(0, 10)}`;
 
     try {
       if (selectedFormat === 'TXT') {
@@ -168,21 +259,60 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
       } else if (selectedFormat === 'PDF') {
         const doc = new jsPDF();
         doc.setFontSize(16);
-        doc.text('OmniVote Survey Results Report', 14, 20);
+        doc.text('OmniVote Survey & Raw Data Report', 14, 20);
         doc.setFontSize(10);
-        doc.text(`Project Title: ${project.title}`, 14, 30);
-        doc.text(`Status: ${project.status} | Total Responses: ${summary.totalResponses}`, 14, 37);
-        doc.text(`Date: ${new Date().toLocaleString()}`, 14, 44);
+        doc.text(`Project Title: ${project.title}`, 14, 28);
+        doc.text(`Status: ${project.status} | Total Responses: ${summary.totalResponses}`, 14, 35);
+        doc.text(`Date: ${new Date().toLocaleString()}`, 14, 42);
 
-        let yPos = 55;
+        let yPos = 52;
+        doc.setFontSize(12);
+        doc.text('1. Raw Responses List', 14, yPos);
+        yPos += 8;
+
+        if (summary.rawResponses && summary.rawResponses.length > 0) {
+          summary.rawResponses.forEach((resp, rIdx) => {
+            if (yPos > 270) {
+              doc.addPage();
+              yPos = 20;
+            }
+            doc.setFontSize(9);
+            const voterName = resp.voterName || 'Anonymous';
+            const timeStr = new Date(resp.createdAt).toLocaleString();
+            doc.text(`#${rIdx + 1} Voter: ${voterName} (${timeStr})`, 16, yPos);
+            yPos += 5;
+
+            const items = getFormattedAnswers(resp);
+            items.forEach((item, qIdx) => {
+              if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+              }
+              doc.text(`   Q${qIdx + 1}: ${item.answer.slice(0, 75)}`, 16, yPos);
+              yPos += 5;
+            });
+            yPos += 3;
+          });
+        }
+
+        yPos += 5;
+        if (yPos > 260) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.text('2. Question Summary', 14, yPos);
+        yPos += 8;
+
         summary.questionStats.forEach((q, idx) => {
           if (yPos > 270) {
             doc.addPage();
             yPos = 20;
           }
-          doc.setFontSize(12);
+          doc.setFontSize(11);
           doc.text(`Q${idx + 1}. ${q.title}`, 14, yPos);
-          yPos += 7;
+          yPos += 6;
 
           if (q.type === 'MULTIPLE_CHOICE') {
             q.optionCounts.forEach(opt => {
@@ -192,7 +322,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
               }
               doc.setFontSize(9);
               doc.text(`- ${opt.text}: ${opt.count} votes (${opt.percentage}%)`, 20, yPos);
-              yPos += 6;
+              yPos += 5;
             });
           } else {
             q.subjectiveAnswers.forEach(ans => {
@@ -201,11 +331,11 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
                 yPos = 20;
               }
               doc.setFontSize(9);
-              doc.text(`* "${ans.text.slice(0, 70)}"`, 20, yPos);
-              yPos += 6;
+              doc.text(`* [${ans.voterName || 'Anon'}] "${ans.text.slice(0, 65)}"`, 20, yPos);
+              yPos += 5;
             });
           }
-          yPos += 6;
+          yPos += 4;
         });
 
         doc.save(`${filename}.pdf`);
@@ -235,7 +365,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
             <Download className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">결과 내보내기 (Export)</h3>
+            <h3 className="text-base font-bold text-slate-900">결과 & Raw Data 내보내기 (Export)</h3>
             <p className="text-xs text-slate-500 font-medium">원하는 파일 포맷을 선택하여 내보내세요.</p>
           </div>
         </div>
@@ -243,10 +373,10 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         {/* Format Selector Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
-            { id: 'TXT', name: 'TXT 텍스트', desc: '간편한 메모장 텍스트 파일', icon: FileText },
-            { id: 'PDF', name: 'PDF 문서', desc: '공통 문서용 PDF 보고서', icon: FileType },
-            { id: 'HTML', name: 'HTML 웹보고서', desc: '브라우저 시각화 리포트', icon: FileCode },
-            { id: 'CSV', name: 'CSV 엑셀', desc: '데이터 분석용 엑셀 호환', icon: FileSpreadsheet }
+            { id: 'TXT', name: 'TXT 텍스트', desc: 'Raw Data 표 포함 텍스트 보고서', icon: FileText },
+            { id: 'PDF', name: 'PDF 문서', desc: 'Raw Data 포함 PDF 문서', icon: FileType },
+            { id: 'HTML', name: 'HTML 웹보고서', desc: 'Raw Data 표 포함 웹 리포트', icon: FileCode },
+            { id: 'CSV', name: 'CSV 엑셀', desc: 'Raw Data 표 포함 엑셀 파일', icon: FileSpreadsheet }
           ].map(fmt => {
             const IconComponent = fmt.icon;
             const isSelected = selectedFormat === fmt.id;
@@ -287,8 +417,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
 
         {/* Info notice */}
         <div className="mb-6 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-medium">
-          * 생성된 파일은 사용자 기기의 <span className="text-indigo-600 font-bold">다운로드(Downloads)</span>{' '}
-          폴더에 자동 저장됩니다.
+          * 투표자 성명 및 선택 항목이 포함된 <span className="text-indigo-600 font-bold">Raw Data 표</span>가 파일에 함께 내보내집니다.
         </div>
 
         {/* Download Action Button */}
@@ -298,7 +427,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
         >
           <Download className="w-4 h-4" />
-          <span>{selectedFormat} 파일 다운로드 실행</span>
+          <span>{selectedFormat} Raw Data 표 포함 파일 내보내기</span>
         </button>
       </div>
     </div>

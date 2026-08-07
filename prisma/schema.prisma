@@ -53,6 +53,7 @@ model Response {
   id        String   @id @default(uuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  voterName String?
   createdAt DateTime @default(now())
   answers   Answer[]
 }

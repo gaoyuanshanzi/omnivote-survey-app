@@ -43,12 +43,14 @@ export interface AnswerItem {
 export interface ResponseItem {
   id: string;
   projectId: string;
+  voterName?: string;
   createdAt: string;
   answers: AnswerItem[];
 }
 
 export interface DashboardSummary {
   totalResponses: number;
+  rawResponses: ResponseItem[];
   questionStats: {
     questionId: string;
     title: string;
@@ -62,6 +64,7 @@ export interface DashboardSummary {
     }[];
     subjectiveAnswers: {
       id: string;
+      voterName?: string;
       text: string;
       createdAt: string;
     }[];

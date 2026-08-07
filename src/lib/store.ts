@@ -327,10 +327,15 @@ export async function deleteProject(id: string): Promise<boolean> {
 }
 
 // Submit Response
-export async function submitResponse(projectId: string, answers: { questionId: string; selectedOptions: string[]; textAnswer?: string }[]): Promise<ResponseItem> {
+export async function submitResponse(
+  projectId: string,
+  answers: { questionId: string; selectedOptions: string[]; textAnswer?: string }[],
+  voterName?: string
+): Promise<ResponseItem> {
   const newResp: ResponseItem = {
     id: `resp-${Date.now()}`,
     projectId,
+    voterName: voterName || '익명 투표자',
     createdAt: new Date().toISOString(),
     answers
   };
@@ -341,6 +346,7 @@ export async function submitResponse(projectId: string, answers: { questionId: s
         data: {
           id: newResp.id,
           projectId,
+          voterName: newResp.voterName,
           answers: {
             create: answers.map(a => ({
               questionId: a.questionId,
@@ -363,7 +369,7 @@ export async function submitResponse(projectId: string, answers: { questionId: s
 export async function getDashboardSummary(projectId: string): Promise<DashboardSummary> {
   const project = await getProjectById(projectId);
   if (!project) {
-    return { totalResponses: 0, questionStats: [] };
+    return { totalResponses: 0, rawResponses: [], questionStats: [] };
   }
 
   let responses = mockResponses.filter(r => r.projectId === projectId);
@@ -371,12 +377,14 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgresql')) {
       const dbResps = await prisma.response.findMany({
         where: { projectId },
-        include: { answers: true }
+        include: { answers: true },
+        orderBy: { createdAt: 'desc' }
       });
       if (dbResps.length > 0) {
         responses = dbResps.map(r => ({
           id: r.id,
           projectId: r.projectId,
+          voterName: r.voterName || '익명 투표자',
           createdAt: r.createdAt.toISOString(),
           answers: r.answers.map(a => ({
             id: a.id,
@@ -397,7 +405,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
     let totalAnswers = 0;
     const optionMap: { [optId: string]: number } = {};
     q.options.forEach(o => { optionMap[o.id] = 0; });
-    const subjectiveAnswers: { id: string; text: string; createdAt: string }[] = [];
+    const subjectiveAnswers: { id: string; voterName?: string; text: string; createdAt: string }[] = [];
 
     responses.forEach(r => {
       const ans = r.answers.find(a => a.questionId === q.id);
@@ -415,6 +423,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
         if (q.type === 'SUBJECTIVE' && ans.textAnswer && ans.textAnswer.trim().length > 0) {
           subjectiveAnswers.push({
             id: r.id,
+            voterName: r.voterName || '익명 투표자',
             text: ans.textAnswer,
             createdAt: r.createdAt
           });
@@ -458,6 +467,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
 
   return {
     totalResponses,
+    rawResponses: responses,
     questionStats
   };
 }

@@ -11,6 +11,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [voterName, setVoterName] = useState('');
 
   // Form state: { [qId]: { selectedOptions: string[], textAnswer?: string } }
   const [formState, setFormState] = useState<{
@@ -111,7 +112,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
       const res = await fetch(`/api/projects/${id}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: formattedAnswers })
+        body: JSON.stringify({ answers: formattedAnswers, voterName: voterName.trim() || '익명 투표자' })
       });
 
       const data = await res.json();
@@ -206,6 +207,23 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
 
         {/* Survey Questions Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Voter Name Card */}
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-lg space-y-2">
+            <label className="block text-sm font-bold text-slate-800">
+              투표자 이름 (Voter Name)
+            </label>
+            <p className="text-xs text-slate-500 font-medium">
+              투표 통계 및 결과 내역에 기록될 성명을 입력해 주세요. (미입력 시 '익명 투표자'로 기록됩니다)
+            </p>
+            <input
+              type="text"
+              value={voterName}
+              onChange={e => setVoterName(e.target.value)}
+              placeholder="예: 홍길동"
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white transition-all"
+            />
+          </div>
+
           {project.questions.map((q, idx) => (
             <div
               key={q.id}
