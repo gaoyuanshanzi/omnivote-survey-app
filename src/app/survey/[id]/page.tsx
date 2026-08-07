@@ -48,19 +48,21 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
     const current = formState[q.id]?.selectedOptions || [];
     let updated: string[];
 
+    const valToStore = opt.text && opt.text.trim() ? opt.text.trim() : opt.id;
+
     if (q.maxSelect === 1) {
       // Single selection (Radio behavior)
-      updated = [opt.id, opt.text];
+      updated = [valToStore];
     } else {
       // Multiple selection
-      if (current.includes(opt.id) || current.includes(opt.text)) {
-        updated = current.filter(val => val !== opt.id && val !== opt.text);
+      if (current.includes(valToStore) || current.includes(opt.id)) {
+        updated = current.filter(val => val !== valToStore && val !== opt.id);
       } else {
-        if (current.filter(val => q.options.some(o => o.id === val)).length >= q.maxSelect) {
+        if (current.length >= q.maxSelect) {
           alert(`이 질문은 최대 ${q.maxSelect}개까지만 선택할 수 있습니다.`);
           return;
         }
-        updated = [...current, opt.id, opt.text];
+        updated = [...current, valToStore];
       }
     }
 
@@ -252,7 +254,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
               {q.type === 'MULTIPLE_CHOICE' && (
                 <div className="space-y-2.5 pt-1">
                   {q.options.map(opt => {
-                    const isChecked = (formState[q.id]?.selectedOptions || []).includes(opt.id);
+                    const isChecked = (formState[q.id]?.selectedOptions || []).some(val => val === opt.id || val === opt.text || val === opt.text?.trim());
                     return (
                       <div
                         key={opt.id}
