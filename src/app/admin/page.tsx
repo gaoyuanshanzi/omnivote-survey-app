@@ -10,6 +10,23 @@ import { ProjectItem } from '@/lib/types';
 // Track user-initiated status changes by projectId so polling never reverts them
 const statusLock = new Map<string, { status: string; lockedAt: number }>();
 
+// Helpers for deleted project ID tracking (survives across polls within a session)
+const getDeletedIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem('omnivote_deleted_ids');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+};
+const addDeletedId = (id: string) => {
+  const ids = getDeletedIds();
+  ids.add(id);
+  localStorage.setItem('omnivote_deleted_ids', JSON.stringify(Array.from(ids)));
+};
+
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -36,16 +53,20 @@ export default function AdminPage() {
   const fetchProjects = async () => {
     if (isRestoringRef.current) return;
     try {
-      const localCache = getLocalCache();
+      const deletedIds = getDeletedIds();
+      // Filter out deleted projects from local cache before any restore attempt
+      const localCache = getLocalCache().filter(p => !deletedIds.has(p.id));
 
       const res = await fetch('/api/projects');
       const data = await res.json();
 
       if (!data.success) return;
 
-      let serverProjects: ProjectItem[] = data.projects || [];
+      let serverProjects: ProjectItem[] = (data.projects || []).filter(
+        (p: ProjectItem) => !deletedIds.has(p.id)
+      );
 
-      // Auto-restore to server if serverless instance lost data
+      // Auto-restore ONLY non-deleted projects if serverless instance lost data
       if (serverProjects.length === 0 && localCache.length > 0) {
         isRestoringRef.current = true;
         for (const p of localCache) {
@@ -58,7 +79,7 @@ export default function AdminPage() {
         const reFetch = await fetch('/api/projects');
         const reData = await reFetch.json();
         serverProjects = (reData.success && reData.projects?.length > 0)
-          ? reData.projects
+          ? (reData.projects || []).filter((p: ProjectItem) => !deletedIds.has(p.id))
           : localCache;
         isRestoringRef.current = false;
       }
@@ -93,14 +114,21 @@ export default function AdminPage() {
 
       setSelectedProjectId(prev => {
         if (!prev && finalProjects.length > 0) return finalProjects[0].id;
+        // Clear selection if selected project was deleted
+        if (prev && !finalProjects.find(p => p.id === prev)) {
+          return finalProjects.length > 0 ? finalProjects[0].id : null;
+        }
         return prev;
       });
     } catch (err) {
       console.error('Fetch projects error:', err);
-      const cached = getLocalCache();
+      const deletedIds = getDeletedIds();
+      const cached = getLocalCache().filter(p => !deletedIds.has(p.id));
       if (cached.length > 0) {
         setProjects(cached);
         setSelectedProjectId(prev => prev || cached[0].id);
+      } else {
+        setProjects([]);
       }
     } finally {
       setLoading(false);
@@ -169,17 +197,19 @@ export default function AdminPage() {
     e.stopPropagation();
     if (!confirm('이 투표 프로젝트를 정말 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        statusLock.delete(id);
-        const remaining = projects.filter(p => p.id !== id);
-        setProjects(remaining);
-        setLocalCache(remaining);
-        if (selectedProjectId === id) {
-          setSelectedProjectId(remaining.length > 0 ? remaining[0].id : null);
-        }
+      // Mark as deleted BEFORE API call so polling can't restore it even if API is slow
+      addDeletedId(id);
+      statusLock.delete(id);
+      const remaining = projects.filter(p => p.id !== id);
+      setProjects(remaining);
+      setLocalCache(remaining);
+      if (selectedProjectId === id) {
+        setSelectedProjectId(remaining.length > 0 ? remaining[0].id : null);
       }
+
+      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      // Also clear any cached responses for this project
+      localStorage.removeItem(`omnivote_resp_cache_${id}`);
     } catch (err) {
       console.error(err);
     }

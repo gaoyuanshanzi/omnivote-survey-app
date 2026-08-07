@@ -20,81 +20,6 @@ declare global {
   var __omnivote_store: PersistentData | undefined;
 }
 
-// Initial seed data so the project and its 2 responses (홍길동, 임꺽정) are always available across all Vercel instances
-const initialSeedProject: ProjectItem = {
-  id: 'proj-1786084284922',
-  title: '중간고사 점수',
-  status: 'CLOSED',
-  createdAt: '2026-08-07T06:30:00.000Z',
-  updatedAt: '2026-08-07T06:30:00.000Z',
-  responseCount: 2,
-  questions: [
-    {
-      id: 'q-1',
-      projectId: 'proj-1786084284922',
-      type: 'MULTIPLE_CHOICE',
-      title: '영어점수',
-      minSelect: 1,
-      maxSelect: 1,
-      order: 1,
-      options: [
-        { id: 'opt-1-1', questionId: 'q-1', text: '100', order: 1 },
-        { id: 'opt-1-2', questionId: 'q-1', text: '200', order: 2 },
-        { id: 'opt-1-3', questionId: 'q-1', text: '300', order: 3 }
-      ]
-    },
-    {
-      id: 'q-2',
-      projectId: 'proj-1786084284922',
-      type: 'MULTIPLE_CHOICE',
-      title: '수학점수',
-      minSelect: 1,
-      maxSelect: 1,
-      order: 2,
-      options: [
-        { id: 'opt-2-1', questionId: 'q-2', text: '100', order: 1 },
-        { id: 'opt-2-2', questionId: 'q-2', text: '200', order: 2 },
-        { id: 'opt-2-3', questionId: 'q-2', text: '300', order: 3 }
-      ]
-    },
-    {
-      id: 'q-3',
-      projectId: 'proj-1786084284922',
-      type: 'SUBJECTIVE',
-      title: '하고싶은 말',
-      minSelect: 1,
-      maxSelect: 1,
-      order: 3,
-      options: []
-    }
-  ]
-};
-
-const initialSeedResponses: ResponseItem[] = [
-  {
-    id: 'resp-1',
-    projectId: 'proj-1786084284922',
-    voterName: '홍길동',
-    createdAt: '2026-08-07T06:32:35.000Z',
-    answers: [
-      { questionId: 'q-1', selectedOptions: ['100'] },
-      { questionId: 'q-2', selectedOptions: ['100'] },
-      { questionId: 'q-3', textAnswer: '시험이 너무 어렵네요.' }
-    ]
-  },
-  {
-    id: 'resp-2',
-    projectId: 'proj-1786084284922',
-    voterName: '임꺽정',
-    createdAt: '2026-08-07T06:33:57.000Z',
-    answers: [
-      { questionId: 'q-1', selectedOptions: ['200'] },
-      { questionId: 'q-2', selectedOptions: ['200'] },
-      { questionId: 'q-3', textAnswer: '난이도 보통임' }
-    ]
-  }
-];
-
 function loadStore(): PersistentData {
   if (globalThis.__omnivote_store) {
     return globalThis.__omnivote_store;
@@ -115,8 +40,8 @@ function loadStore(): PersistentData {
   }
 
   const initial: PersistentData = {
-    projects: [initialSeedProject],
-    responses: initialSeedResponses
+    projects: [],
+    responses: []
   };
   globalThis.__omnivote_store = initial;
   return initial;
