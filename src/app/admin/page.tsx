@@ -6,7 +6,6 @@ import SidebarDirectory from '@/components/SidebarDirectory';
 import QuestionCreator from '@/components/QuestionCreator';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { ProjectItem } from '@/lib/types';
-import { Layers, BarChart3 } from 'lucide-react';
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -20,7 +19,38 @@ export default function AdminPage() {
       const res = await fetch('/api/projects');
       const data = await res.json();
       if (data.success && data.projects) {
+        // If server returns empty (e.g. serverless cold start), attempt auto-restore from browser localStorage cache
+        if (data.projects.length === 0) {
+          const localCache = localStorage.getItem('omnivote_projects_cache');
+          if (localCache) {
+            try {
+              const cached = JSON.parse(localCache) as ProjectItem[];
+              if (cached && cached.length > 0) {
+                for (const p of cached) {
+                  await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(p)
+                  });
+                }
+                const reFetch = await fetch('/api/projects');
+                const reData = await reFetch.json();
+                if (reData.success && reData.projects && reData.projects.length > 0) {
+                  setProjects(reData.projects);
+                  if (!selectedProjectId) {
+                    setSelectedProjectId(reData.projects[0].id);
+                  }
+                  return;
+                }
+              }
+            } catch (e) {
+              console.error('Auto restore cache error:', e);
+            }
+          }
+        }
+
         setProjects(data.projects);
+        localStorage.setItem('omnivote_projects_cache', JSON.stringify(data.projects));
         if (!selectedProjectId && data.projects.length > 0) {
           setSelectedProjectId(data.projects[0].id);
         }
@@ -82,6 +112,7 @@ export default function AdminPage() {
       if (data.success) {
         const remaining = projects.filter(p => p.id !== id);
         setProjects(remaining);
+        localStorage.setItem('omnivote_projects_cache', JSON.stringify(remaining));
         if (selectedProjectId === id) {
           setSelectedProjectId(remaining.length > 0 ? remaining[0].id : null);
         }
@@ -92,16 +123,7 @@ export default function AdminPage() {
   };
 
   return (
-    /*
-     * LAYOUT STRATEGY:
-     * - Navbar: fixed at top, h-16
-     * - Below navbar: flex row (sidebar | main)
-     * - Sidebar: STATIC in flow, fixed width, never overlaps content
-     * - Main: flex-1, split into creator + dashboard columns
-     * - Mobile: tab-based single column, no overlapping
-     */
     <div className="h-screen flex flex-col bg-slate-100 overflow-hidden">
-
       {/* ── NAVBAR (h-16, z-30) ── */}
       <div className="shrink-0 z-30 bg-white border-b border-slate-200">
         <Navbar onNewProject={handleNewProject} />
@@ -109,7 +131,6 @@ export default function AdminPage() {
 
       {/* ── BODY: fills remaining height ── */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-
         {/* ── SIDEBAR: static in flow on desktop, hidden on mobile ── */}
         <aside className="hidden lg:flex lg:flex-col w-72 xl:w-80 shrink-0 h-full border-r border-slate-200 bg-white overflow-hidden">
           <SidebarDirectory
@@ -123,7 +144,6 @@ export default function AdminPage() {
 
         {/* ── MOBILE: tab switcher ── */}
         <div className="lg:hidden flex-1 flex flex-col overflow-hidden min-h-0">
-          {/* Mobile tab bar */}
           <div className="shrink-0 grid grid-cols-3 bg-white border-b border-slate-200 p-1.5 gap-1.5">
             {([
               { id: 'SIDEBAR', label: '디렉토리', icon: '📁' },
@@ -145,7 +165,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* Mobile panel */}
           <div className="flex-1 overflow-hidden min-h-0">
             {mobileTab === 'SIDEBAR' && (
               <div className="h-full overflow-hidden bg-white">
@@ -177,7 +196,6 @@ export default function AdminPage() {
 
         {/* ── DESKTOP: Creator + Dashboard side by side ── */}
         <main className="hidden lg:flex flex-1 overflow-hidden min-h-0 min-w-0">
-          {/* Panel 2: Question Creator */}
           <div className="flex-1 min-w-0 h-full border-r border-slate-200 overflow-hidden">
             <QuestionCreator
               project={isNewProjectMode ? null : selectedProject}
@@ -186,12 +204,10 @@ export default function AdminPage() {
             />
           </div>
 
-          {/* Panel 3: Results Dashboard */}
           <div className="flex-1 min-w-0 h-full overflow-hidden">
             <ResultsDashboard project={selectedProject} onRefreshProject={fetchProjects} />
           </div>
         </main>
-
       </div>
     </div>
   );
