@@ -16,12 +16,14 @@ interface PersistentData {
   responses: ResponseItem[];
 }
 
-// Global in-memory cache + file sync
+// Cloud REST DB for unified Serverless state across all Vercel Lambdas
+const CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fdb02a7c3084b';
+
 declare global {
   var __omnivote_store: PersistentData | undefined;
 }
 
-function loadStore(): PersistentData {
+function loadLocalStore(): PersistentData {
   if (globalThis.__omnivote_store) {
     return globalThis.__omnivote_store;
   }
@@ -48,13 +50,77 @@ function loadStore(): PersistentData {
   return initial;
 }
 
-function saveStore(data: PersistentData) {
+async function loadStoreAsync(): Promise<PersistentData> {
+  const local = loadLocalStore();
+
+  try {
+    const res = await fetch(CLOUD_DB_URL, { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data && Array.isArray(json.data.projects) && Array.isArray(json.data.responses)) {
+        const cloudData: PersistentData = json.data;
+
+        // Merge local/memory and cloud data to ensure no responses or projects are lost
+        const projMap = new Map<string, ProjectItem>();
+        cloudData.projects.forEach(p => projMap.set(p.id, p));
+        local.projects.forEach(lp => {
+          const cp = projMap.get(lp.id);
+          if (!cp) {
+            projMap.set(lp.id, lp);
+          } else {
+            // Keep status with newest updatedAt timestamp
+            let merged = { ...cp };
+            if (lp.updatedAt && cp.updatedAt && new Date(lp.updatedAt).getTime() > new Date(cp.updatedAt).getTime()) {
+              merged.status = lp.status;
+              merged.updatedAt = lp.updatedAt;
+            }
+            projMap.set(lp.id, merged);
+          }
+        });
+
+        const respMap = new Map<string, ResponseItem>();
+        cloudData.responses.forEach(r => respMap.set(r.id, r));
+        local.responses.forEach(r => respMap.set(r.id, r));
+
+        const merged: PersistentData = {
+          projects: Array.from(projMap.values()),
+          responses: Array.from(respMap.values())
+        };
+
+        globalThis.__omnivote_store = merged;
+        return merged;
+      }
+    }
+  } catch (err) {
+    console.warn('Cloud DB fetch error, using local fallback:', err);
+  }
+
+  return local;
+}
+
+async function saveStoreAsync(data: PersistentData) {
   globalThis.__omnivote_store = data;
+
+  // Local file sync
   const filePath = getStorageFilePath();
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.warn('Failed to write storage file:', err);
+  }
+
+  // Cloud DB sync for cross-instance serverless consistency
+  try {
+    await fetch(CLOUD_DB_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'omnivote_survey_app_db_v1',
+        data
+      })
+    });
+  } catch (err) {
+    console.warn('Cloud DB update error:', err);
   }
 }
 
@@ -85,7 +151,7 @@ export async function getProjects(): Promise<ProjectItem[]> {
     console.warn('Prisma DB connect warning, falling back to persistent store:', error);
   }
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   return store.projects.map(p => ({
     ...p,
     responseCount: store.responses.filter(r => r.projectId === p.id).length
@@ -119,7 +185,7 @@ export async function getProjectById(id: string): Promise<ProjectItem | null> {
     console.warn('Prisma getProjectById error:', error);
   }
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const found = store.projects.find(p => p.id === id);
   if (found) {
     return {
@@ -132,10 +198,9 @@ export async function getProjectById(id: string): Promise<ProjectItem | null> {
 
 // ── Save or Update Project ─────────────────────────────────────
 export async function saveProject(projectData: Partial<ProjectItem>): Promise<ProjectItem> {
-  const store = loadStore();
+  const store = await loadStoreAsync();
   const isEdit = !!projectData.id && store.projects.some(p => p.id === projectData.id);
   const projId = projectData.id || `proj-${Date.now()}`;
-  // Use client-provided updatedAt if given (important to preserve status-change timestamps)
   const now = projectData.updatedAt || new Date().toISOString();
 
   const formattedQuestions = (projectData.questions || []).map((q, qIdx) => ({
@@ -220,16 +285,16 @@ export async function saveProject(projectData: Partial<ProjectItem>): Promise<Pr
       }
     }
   } catch (error) {
-    console.warn('Prisma saveProject error, saved to persistent JSON store:', error);
+    console.warn('Prisma saveProject error, saved to persistent store:', error);
   }
 
-  // Update in-memory and persistent file store
+  // Update in-memory and cloud persistent store
   if (isEdit) {
     store.projects = store.projects.map(p => (p.id === projId ? updatedProject : p));
   } else {
     store.projects.unshift(updatedProject);
   }
-  saveStore(store);
+  await saveStoreAsync(store);
 
   return updatedProject;
 }
@@ -244,10 +309,10 @@ export async function deleteProject(id: string): Promise<boolean> {
     console.warn('Prisma deleteProject error:', error);
   }
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   store.projects = store.projects.filter(p => p.id !== id);
   store.responses = store.responses.filter(r => r.projectId !== id);
-  saveStore(store);
+  await saveStoreAsync(store);
   return true;
 }
 
@@ -286,14 +351,14 @@ export async function submitResponse(
     console.warn('Prisma submitResponse error:', error);
   }
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   store.responses.unshift(newResp);
   // Also update response count on target project
   const targetProj = store.projects.find(p => p.id === projectId);
   if (targetProj) {
     targetProj.responseCount = store.responses.filter(r => r.projectId === projectId).length;
   }
-  saveStore(store);
+  await saveStoreAsync(store);
 
   return newResp;
 }
@@ -305,7 +370,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
     return { totalResponses: 0, rawResponses: [], questionStats: [] };
   }
 
-  const store = loadStore();
+  const store = await loadStoreAsync();
   let responses = store.responses.filter(r => r.projectId === projectId);
 
   try {
