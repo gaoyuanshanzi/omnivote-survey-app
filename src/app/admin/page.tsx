@@ -16,77 +16,90 @@ export default function AdminPage() {
 
   const fetchProjects = async () => {
     try {
+      let localCache: ProjectItem[] = [];
+      const localRaw = localStorage.getItem('omnivote_projects_cache');
+      if (localRaw) {
+        try {
+          const parsed = JSON.parse(localRaw);
+          if (Array.isArray(parsed)) localCache = parsed;
+        } catch {}
+      }
+
       const res = await fetch('/api/projects');
       const data = await res.json();
-      if (data.success && data.projects) {
-        // If server returns empty (e.g. serverless cold start), attempt auto-restore from browser localStorage cache
-        if (data.projects.length === 0) {
-          const localCache = localStorage.getItem('omnivote_projects_cache');
-          if (localCache) {
-            try {
-              const cached = JSON.parse(localCache) as ProjectItem[];
-              if (cached && cached.length > 0) {
-                for (const p of cached) {
-                  await fetch('/api/projects', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(p)
-                  });
-                }
-                const reFetch = await fetch('/api/projects');
-                const reData = await reFetch.json();
-                if (reData.success && reData.projects && reData.projects.length > 0) {
-                  setProjects(reData.projects);
-                  if (!selectedProjectId) {
-                    setSelectedProjectId(reData.projects[0].id);
-                  }
-                  return;
-                }
-              }
-            } catch (e) {
-              console.error('Auto restore cache error:', e);
-            }
+
+      if (data.success) {
+        let serverProjects: ProjectItem[] = data.projects || [];
+
+        // Auto-restore if Vercel serverless instance reset to empty array
+        if (serverProjects.length === 0 && localCache.length > 0) {
+          for (const p of localCache) {
+            await fetch('/api/projects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(p)
+            });
+          }
+          const reFetch = await fetch('/api/projects');
+          const reData = await reFetch.json();
+          if (reData.success && reData.projects && reData.projects.length > 0) {
+            serverProjects = reData.projects;
+          } else {
+            serverProjects = localCache;
           }
         }
 
-        let localCacheList: ProjectItem[] = [];
-        const localRawProjects = localStorage.getItem('omnivote_projects_cache');
-        if (localRawProjects) {
-          try { localCacheList = JSON.parse(localRawProjects); } catch {}
-        }
+        const projectMap = new Map<string, ProjectItem>();
+        localCache.forEach(lp => projectMap.set(lp.id, lp));
 
-        const mergedProjects = data.projects.map(sp => {
-          const localP = localCacheList.find(lp => lp.id === sp.id);
-          let baseP = sp;
-          if (localP && localP.updatedAt && sp.updatedAt) {
-            if (new Date(localP.updatedAt).getTime() > new Date(sp.updatedAt).getTime()) {
-              baseP = { ...sp, status: localP.status, title: localP.title, updatedAt: localP.updatedAt };
+        serverProjects.forEach(sp => {
+          const lp = projectMap.get(sp.id);
+          let mergedP = { ...sp };
+          if (lp) {
+            if (lp.updatedAt && sp.updatedAt && new Date(lp.updatedAt).getTime() > new Date(sp.updatedAt).getTime()) {
+              mergedP.status = lp.status;
+              mergedP.title = lp.title;
+              mergedP.updatedAt = lp.updatedAt;
+            } else if (lp.status) {
+              mergedP.status = lp.status;
             }
-          } else if (localP && localP.status) {
-            baseP = { ...sp, status: localP.status };
           }
-
           const cacheKey = `omnivote_resp_cache_${sp.id}`;
           const localRawResp = localStorage.getItem(cacheKey);
           if (localRawResp) {
             try {
               const cachedResps = JSON.parse(localRawResp);
               if (Array.isArray(cachedResps)) {
-                baseP.responseCount = Math.max(baseP.responseCount || 0, cachedResps.length);
+                mergedP.responseCount = Math.max(mergedP.responseCount || 0, cachedResps.length);
               }
             } catch {}
           }
-          return baseP;
+          projectMap.set(sp.id, mergedP);
         });
 
-        setProjects(mergedProjects);
-        localStorage.setItem('omnivote_projects_cache', JSON.stringify(mergedProjects));
-        if (!selectedProjectId && mergedProjects.length > 0) {
-          setSelectedProjectId(mergedProjects[0].id);
+        const finalProjects = Array.from(projectMap.values());
+        setProjects(finalProjects);
+
+        if (finalProjects.length > 0) {
+          localStorage.setItem('omnivote_projects_cache', JSON.stringify(finalProjects));
+        }
+
+        if (!selectedProjectId && finalProjects.length > 0) {
+          setSelectedProjectId(finalProjects[0].id);
         }
       }
     } catch (err) {
       console.error('Fetch projects error:', err);
+      const localRaw = localStorage.getItem('omnivote_projects_cache');
+      if (localRaw) {
+        try {
+          const cached = JSON.parse(localRaw);
+          if (Array.isArray(cached) && cached.length > 0) {
+            setProjects(cached);
+            if (!selectedProjectId) setSelectedProjectId(cached[0].id);
+          }
+        } catch {}
+      }
     } finally {
       setLoading(false);
     }
