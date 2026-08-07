@@ -48,20 +48,25 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
   const [subjectiveSearch, setSubjectiveSearch] = useState('');
 
   const recalculateSummary = (proj: ProjectItem, responses: ResponseItem[]): DashboardSummary => {
-    const totalResponses = responses.length;
-    const questionStats = proj.questions.map(q => {
+    const validResponses = Array.isArray(responses) ? responses : [];
+    const questionsList = Array.isArray(proj?.questions) ? proj.questions : [];
+    const totalResponses = validResponses.length;
+
+    const questionStats = questionsList.map(q => {
       let totalAnswers = 0;
       const optionMap: { [optId: string]: number } = {};
-      q.options.forEach(o => { optionMap[o.id] = 0; });
+      const optionsList = Array.isArray(q?.options) ? q.options : [];
+      optionsList.forEach(o => { if (o?.id) optionMap[o.id] = 0; });
       const subjectiveAnswers: { id: string; voterName?: string; text: string; createdAt: string }[] = [];
 
-      responses.forEach(r => {
-        const ans = r.answers.find(a => a.questionId === q.id);
+      validResponses.forEach(r => {
+        const answersList = Array.isArray(r?.answers) ? r.answers : [];
+        const ans = answersList.find(a => a.questionId === q.id);
         if (ans) {
           totalAnswers++;
-          if (q.type === 'MULTIPLE_CHOICE' && ans.selectedOptions) {
+          if (q.type === 'MULTIPLE_CHOICE' && Array.isArray(ans.selectedOptions)) {
             ans.selectedOptions.forEach(optIdOrText => {
-              const foundOpt = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+              const foundOpt = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
               if (foundOpt) {
                 optionMap[foundOpt.id] = (optionMap[foundOpt.id] || 0) + 1;
               }
@@ -78,12 +83,12 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
         }
       });
 
-      const optionCounts = q.options.map(o => {
+      const optionCounts = optionsList.map(o => {
         const count = optionMap[o.id] || 0;
         const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
         return {
           optionId: o.id,
-          text: o.text,
+          text: o.text || '',
           count,
           percentage
         };
@@ -103,7 +108,7 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
       return {
         questionId: q.id,
-        title: q.title,
+        title: q.title || '',
         type: q.type,
         totalAnswers,
         optionCounts,
@@ -114,7 +119,7 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
     return {
       totalResponses,
-      rawResponses: responses,
+      rawResponses: validResponses,
       questionStats
     };
   };
@@ -196,22 +201,27 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
   // Helper to format a response into human-readable question-answer pairs
   const formatUserResponse = (resp: ResponseItem) => {
-    return project.questions.map(q => {
-      const ans = resp.answers.find(a => a.questionId === q.id);
-      if (!ans) return { qTitle: q.title, answer: '응답 없음' };
+    const questionsList = Array.isArray(project?.questions) ? project.questions : [];
+    const answersList = Array.isArray(resp?.answers) ? resp.answers : [];
 
+    return questionsList.map(q => {
+      const ans = answersList.find(a => a.questionId === q.id);
+      if (!ans) return { qTitle: q.title || '', answer: '응답 없음' };
+
+      const optionsList = Array.isArray(q?.options) ? q.options : [];
       if (q.type === 'MULTIPLE_CHOICE') {
-        const selectedTexts = (ans.selectedOptions || []).map(optIdOrText => {
-          const found = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+        const selectedOptions = Array.isArray(ans.selectedOptions) ? ans.selectedOptions : [];
+        const selectedTexts = selectedOptions.map(optIdOrText => {
+          const found = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
           return found ? found.text : optIdOrText;
         });
         return {
-          qTitle: q.title,
+          qTitle: q.title || '',
           answer: selectedTexts.length > 0 ? selectedTexts.join(', ') : '선택 없음'
         };
       } else {
         return {
-          qTitle: q.title,
+          qTitle: q.title || '',
           answer: ans.textAnswer && ans.textAnswer.trim() ? ans.textAnswer : '답변 없음'
         };
       }

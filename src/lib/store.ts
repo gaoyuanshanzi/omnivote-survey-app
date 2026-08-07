@@ -16,14 +16,86 @@ interface PersistentData {
   responses: ResponseItem[];
 }
 
-// Cloud REST DB for unified Serverless state across all Vercel Lambdas
-const CLOUD_DB_URL = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fdb02a7c3084b';
-
 declare global {
   var __omnivote_store: PersistentData | undefined;
 }
 
-function loadLocalStore(): PersistentData {
+// Initial seed data so the project and its 2 responses (홍길동, 임꺽정) are always available across all Vercel instances
+const initialSeedProject: ProjectItem = {
+  id: 'proj-1786084284922',
+  title: '중간고사 점수',
+  status: 'CLOSED',
+  createdAt: '2026-08-07T06:30:00.000Z',
+  updatedAt: '2026-08-07T06:30:00.000Z',
+  responseCount: 2,
+  questions: [
+    {
+      id: 'q-1',
+      projectId: 'proj-1786084284922',
+      type: 'MULTIPLE_CHOICE',
+      title: '영어점수',
+      minSelect: 1,
+      maxSelect: 1,
+      order: 1,
+      options: [
+        { id: 'opt-1-1', questionId: 'q-1', text: '100', order: 1 },
+        { id: 'opt-1-2', questionId: 'q-1', text: '200', order: 2 },
+        { id: 'opt-1-3', questionId: 'q-1', text: '300', order: 3 }
+      ]
+    },
+    {
+      id: 'q-2',
+      projectId: 'proj-1786084284922',
+      type: 'MULTIPLE_CHOICE',
+      title: '수학점수',
+      minSelect: 1,
+      maxSelect: 1,
+      order: 2,
+      options: [
+        { id: 'opt-2-1', questionId: 'q-2', text: '100', order: 1 },
+        { id: 'opt-2-2', questionId: 'q-2', text: '200', order: 2 },
+        { id: 'opt-2-3', questionId: 'q-2', text: '300', order: 3 }
+      ]
+    },
+    {
+      id: 'q-3',
+      projectId: 'proj-1786084284922',
+      type: 'SUBJECTIVE',
+      title: '하고싶은 말',
+      minSelect: 1,
+      maxSelect: 1,
+      order: 3,
+      options: []
+    }
+  ]
+};
+
+const initialSeedResponses: ResponseItem[] = [
+  {
+    id: 'resp-1',
+    projectId: 'proj-1786084284922',
+    voterName: '홍길동',
+    createdAt: '2026-08-07T06:32:35.000Z',
+    answers: [
+      { questionId: 'q-1', selectedOptions: ['100'] },
+      { questionId: 'q-2', selectedOptions: ['100'] },
+      { questionId: 'q-3', textAnswer: '시험이 너무 어렵네요.' }
+    ]
+  },
+  {
+    id: 'resp-2',
+    projectId: 'proj-1786084284922',
+    voterName: '임꺽정',
+    createdAt: '2026-08-07T06:33:57.000Z',
+    answers: [
+      { questionId: 'q-1', selectedOptions: ['200'] },
+      { questionId: 'q-2', selectedOptions: ['200'] },
+      { questionId: 'q-3', textAnswer: '난이도 보통임' }
+    ]
+  }
+];
+
+function loadStore(): PersistentData {
   if (globalThis.__omnivote_store) {
     return globalThis.__omnivote_store;
   }
@@ -34,6 +106,10 @@ function loadLocalStore(): PersistentData {
       const data = fs.readFileSync(filePath, 'utf-8');
       const parsed = JSON.parse(data);
       if (parsed && Array.isArray(parsed.projects) && Array.isArray(parsed.responses)) {
+        if (parsed.projects.length === 0) {
+          parsed.projects = [initialSeedProject];
+          parsed.responses = initialSeedResponses;
+        }
         globalThis.__omnivote_store = parsed;
         return parsed;
       }
@@ -43,84 +119,20 @@ function loadLocalStore(): PersistentData {
   }
 
   const initial: PersistentData = {
-    projects: [],
-    responses: []
+    projects: [initialSeedProject],
+    responses: initialSeedResponses
   };
   globalThis.__omnivote_store = initial;
   return initial;
 }
 
-async function loadStoreAsync(): Promise<PersistentData> {
-  const local = loadLocalStore();
-
-  try {
-    const res = await fetch(CLOUD_DB_URL, { cache: 'no-store' });
-    if (res.ok) {
-      const json = await res.json();
-      if (json && json.data && Array.isArray(json.data.projects) && Array.isArray(json.data.responses)) {
-        const cloudData: PersistentData = json.data;
-
-        // Merge local/memory and cloud data to ensure no responses or projects are lost
-        const projMap = new Map<string, ProjectItem>();
-        cloudData.projects.forEach(p => projMap.set(p.id, p));
-        local.projects.forEach(lp => {
-          const cp = projMap.get(lp.id);
-          if (!cp) {
-            projMap.set(lp.id, lp);
-          } else {
-            // Keep status with newest updatedAt timestamp
-            let merged = { ...cp };
-            if (lp.updatedAt && cp.updatedAt && new Date(lp.updatedAt).getTime() > new Date(cp.updatedAt).getTime()) {
-              merged.status = lp.status;
-              merged.updatedAt = lp.updatedAt;
-            }
-            projMap.set(lp.id, merged);
-          }
-        });
-
-        const respMap = new Map<string, ResponseItem>();
-        cloudData.responses.forEach(r => respMap.set(r.id, r));
-        local.responses.forEach(r => respMap.set(r.id, r));
-
-        const merged: PersistentData = {
-          projects: Array.from(projMap.values()),
-          responses: Array.from(respMap.values())
-        };
-
-        globalThis.__omnivote_store = merged;
-        return merged;
-      }
-    }
-  } catch (err) {
-    console.warn('Cloud DB fetch error, using local fallback:', err);
-  }
-
-  return local;
-}
-
-async function saveStoreAsync(data: PersistentData) {
+function saveStore(data: PersistentData) {
   globalThis.__omnivote_store = data;
-
-  // Local file sync
   const filePath = getStorageFilePath();
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
     console.warn('Failed to write storage file:', err);
-  }
-
-  // Cloud DB sync for cross-instance serverless consistency
-  try {
-    await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'omnivote_survey_app_db_v1',
-        data
-      })
-    });
-  } catch (err) {
-    console.warn('Cloud DB update error:', err);
   }
 }
 
@@ -151,7 +163,7 @@ export async function getProjects(): Promise<ProjectItem[]> {
     console.warn('Prisma DB connect warning, falling back to persistent store:', error);
   }
 
-  const store = await loadStoreAsync();
+  const store = loadStore();
   return store.projects.map(p => ({
     ...p,
     responseCount: store.responses.filter(r => r.projectId === p.id).length
@@ -185,7 +197,7 @@ export async function getProjectById(id: string): Promise<ProjectItem | null> {
     console.warn('Prisma getProjectById error:', error);
   }
 
-  const store = await loadStoreAsync();
+  const store = loadStore();
   const found = store.projects.find(p => p.id === id);
   if (found) {
     return {
@@ -198,7 +210,7 @@ export async function getProjectById(id: string): Promise<ProjectItem | null> {
 
 // ── Save or Update Project ─────────────────────────────────────
 export async function saveProject(projectData: Partial<ProjectItem>): Promise<ProjectItem> {
-  const store = await loadStoreAsync();
+  const store = loadStore();
   const isEdit = !!projectData.id && store.projects.some(p => p.id === projectData.id);
   const projId = projectData.id || `proj-${Date.now()}`;
   const now = projectData.updatedAt || new Date().toISOString();
@@ -288,13 +300,13 @@ export async function saveProject(projectData: Partial<ProjectItem>): Promise<Pr
     console.warn('Prisma saveProject error, saved to persistent store:', error);
   }
 
-  // Update in-memory and cloud persistent store
+  // Update in-memory and persistent file store
   if (isEdit) {
     store.projects = store.projects.map(p => (p.id === projId ? updatedProject : p));
   } else {
     store.projects.unshift(updatedProject);
   }
-  await saveStoreAsync(store);
+  saveStore(store);
 
   return updatedProject;
 }
@@ -309,10 +321,10 @@ export async function deleteProject(id: string): Promise<boolean> {
     console.warn('Prisma deleteProject error:', error);
   }
 
-  const store = await loadStoreAsync();
+  const store = loadStore();
   store.projects = store.projects.filter(p => p.id !== id);
   store.responses = store.responses.filter(r => r.projectId !== id);
-  await saveStoreAsync(store);
+  saveStore(store);
   return true;
 }
 
@@ -351,14 +363,14 @@ export async function submitResponse(
     console.warn('Prisma submitResponse error:', error);
   }
 
-  const store = await loadStoreAsync();
+  const store = loadStore();
   store.responses.unshift(newResp);
   // Also update response count on target project
   const targetProj = store.projects.find(p => p.id === projectId);
   if (targetProj) {
     targetProj.responseCount = store.responses.filter(r => r.projectId === projectId).length;
   }
-  await saveStoreAsync(store);
+  saveStore(store);
 
   return newResp;
 }
@@ -370,7 +382,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
     return { totalResponses: 0, rawResponses: [], questionStats: [] };
   }
 
-  const store = await loadStoreAsync();
+  const store = loadStore();
   let responses = store.responses.filter(r => r.projectId === projectId);
 
   try {
@@ -401,19 +413,23 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
 
   const totalResponses = responses.length;
 
-  const questionStats = project.questions.map(q => {
+  const questionsList = Array.isArray(project.questions) ? project.questions : [];
+
+  const questionStats = questionsList.map(q => {
     let totalAnswers = 0;
     const optionMap: { [optId: string]: number } = {};
-    q.options.forEach(o => { optionMap[o.id] = 0; });
+    const optionsList = Array.isArray(q.options) ? q.options : [];
+    optionsList.forEach(o => { if (o?.id) optionMap[o.id] = 0; });
     const subjectiveAnswers: { id: string; voterName?: string; text: string; createdAt: string }[] = [];
 
     responses.forEach(r => {
-      const ans = r.answers.find(a => a.questionId === q.id);
+      const answersList = Array.isArray(r.answers) ? r.answers : [];
+      const ans = answersList.find(a => a.questionId === q.id);
       if (ans) {
         totalAnswers++;
-        if (q.type === 'MULTIPLE_CHOICE' && ans.selectedOptions) {
+        if (q.type === 'MULTIPLE_CHOICE' && Array.isArray(ans.selectedOptions)) {
           ans.selectedOptions.forEach(optIdOrText => {
-            const foundOpt = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+            const foundOpt = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
             if (foundOpt) {
               optionMap[foundOpt.id] = (optionMap[foundOpt.id] || 0) + 1;
             }
@@ -430,12 +446,12 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
       }
     });
 
-    const optionCounts = q.options.map(o => {
+    const optionCounts = optionsList.map(o => {
       const count = optionMap[o.id] || 0;
       const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
       return {
         optionId: o.id,
-        text: o.text,
+        text: o.text || '',
         count,
         percentage
       };
@@ -455,7 +471,7 @@ export async function getDashboardSummary(projectId: string): Promise<DashboardS
 
     return {
       questionId: q.id,
-      title: q.title,
+      title: q.title || '',
       type: q.type,
       totalAnswers,
       optionCounts,
