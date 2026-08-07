@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from 'react';
 import { ProjectItem, QuestionItem } from '@/lib/types';
-import { Vote, CheckCircle2, AlertCircle, Send, Sparkles, Clock, Lock } from 'lucide-react';
+import { Vote, CheckCircle2, AlertCircle, Send, Lock } from 'lucide-react';
 
 export default function PublicSurveyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -129,10 +129,10 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-6 py-4 rounded-2xl shadow-xl">
-          <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-semibold text-slate-300">투표 정보를 불러오는 중...</span>
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 bg-white border border-slate-200 px-6 py-4 rounded-2xl shadow-md">
+          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold text-slate-700">투표 정보를 불러오는 중...</span>
         </div>
       </div>
     );
@@ -140,13 +140,13 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20">
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-slate-200 p-8 rounded-3xl text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center border border-rose-200">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-white">접속 오류</h2>
-          <p className="text-xs text-slate-400">{error || '존재하지 않거나 비활성화된 투표입니다.'}</p>
+          <h2 className="text-lg font-bold text-slate-900">접속 오류</h2>
+          <p className="text-xs text-slate-500 font-medium">{error || '존재하지 않거나 비활성화된 투표입니다.'}</p>
         </div>
       </div>
     );
@@ -154,13 +154,13 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
 
   if (project.status === 'CLOSED') {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-4 shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/20">
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-slate-200 p-8 rounded-3xl text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center border border-rose-200">
             <Lock className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-white">투표가 종료되었습니다</h2>
-          <p className="text-xs text-slate-400 font-medium">본 설문조사는 기획자에 의해 종료 처리되었습니다.</p>
+          <h2 className="text-lg font-bold text-slate-900">투표가 종료되었습니다</h2>
+          <p className="text-xs text-slate-500 font-medium">본 설문조사는 기획자에 의해 종료 처리되었습니다.</p>
         </div>
       </div>
     );
@@ -168,16 +168,16 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 p-8 rounded-3xl text-center space-y-5 shadow-2xl relative z-10 backdrop-blur-xl">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/30 shadow-lg shadow-emerald-500/20">
+        <div className="max-w-md w-full bg-white border border-slate-200 p-8 rounded-3xl text-center space-y-5 shadow-2xl relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center border border-emerald-200 shadow-md">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-white">투표가 성공적으로 소중하게 제출되었습니다!</h2>
-          <p className="text-xs text-slate-400 leading-relaxed font-medium">
+          <h2 className="text-xl font-bold text-slate-900">투표가 성공적으로 제출되었습니다!</h2>
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
             참여해 주셔서 진심으로 감사드립니다.<br />
-            제출하신 의견은 실시간 통계 결과에 반영되었습니다.
+            제출하신 의견은 실시간 통계 결과에 소중히 반영되었습니다.
           </p>
         </div>
       </div>
@@ -185,18 +185,18 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-10 px-4 flex justify-center">
+    <div className="min-h-screen bg-slate-100 text-slate-900 py-10 px-4 flex justify-center">
       <div className="w-full max-w-2xl space-y-6">
         {/* Header Branding Card */}
-        <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 backdrop-blur-xl shadow-2xl space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-wider">
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider">
             <Vote className="w-4 h-4" />
             <span>OmniVote Public Survey</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-snug">{project.title}</h1>
-          <div className="flex items-center gap-3 pt-2 text-xs text-slate-400 border-t border-slate-800/80">
-            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">{project.title}</h1>
+          <div className="flex items-center gap-3 pt-2 text-xs text-slate-500 border-t border-slate-100 font-medium">
+            <span className="flex items-center gap-1 text-emerald-700 font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               투표 진행 중
             </span>
             <span>•</span>
@@ -209,17 +209,17 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
           {project.questions.map((q, idx) => (
             <div
               key={q.id}
-              className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-4 transition-all hover:border-slate-700"
+              className="p-6 rounded-3xl bg-white border border-slate-200 shadow-lg space-y-4 transition-all hover:border-slate-300"
             >
               {/* Question Header */}
               <div className="flex items-start gap-3">
-                <span className="w-7 h-7 rounded-xl bg-indigo-600/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center border border-indigo-500/30 shrink-0 mt-0.5">
+                <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-700 font-extrabold text-xs flex items-center justify-center border border-indigo-200 shrink-0 mt-0.5">
                   Q{idx + 1}
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-white leading-snug">{q.title}</h3>
+                  <h3 className="text-base font-bold text-slate-900 leading-snug">{q.title}</h3>
                   {q.type === 'MULTIPLE_CHOICE' && (
-                    <p className="text-xs text-indigo-400 font-semibold mt-1">
+                    <p className="text-xs text-indigo-600 font-bold mt-1">
                       (
                       {q.minSelect === q.maxSelect
                         ? `정확히 ${q.minSelect}개 선택`
@@ -241,18 +241,18 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
                         onClick={() => handleOptionToggle(q, opt.id)}
                         className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                           isChecked
-                            ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-md shadow-indigo-950'
-                            : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:bg-slate-800/50 hover:border-slate-700'
+                            ? 'bg-indigo-50/90 border-indigo-600 text-indigo-950 shadow-xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100/60 hover:border-slate-300'
                         }`}
                       >
-                        <span className="text-sm font-medium">{opt.text}</span>
+                        <span className="text-sm font-bold">{opt.text}</span>
                         <div
                           className={`w-5 h-5 rounded-${
                             q.maxSelect === 1 ? 'full' : 'md'
                           } border flex items-center justify-center transition-all ${
                             isChecked
-                              ? 'bg-indigo-600 border-indigo-500 text-white'
-                              : 'border-slate-700 bg-slate-900'
+                              ? 'bg-indigo-600 border-indigo-600 text-white'
+                              : 'border-slate-300 bg-white'
                           }`}
                         >
                           {isChecked && <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -271,7 +271,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
                     value={formState[q.id]?.textAnswer || ''}
                     onChange={e => handleTextChange(q.id, e.target.value)}
                     placeholder="여기에 생각이나 의견을 자유롭게 적어주세요..."
-                    className="w-full p-4 rounded-2xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none transition-all"
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:bg-white resize-none transition-all"
                   />
                 </div>
               )}
@@ -282,7 +282,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-extrabold text-base shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-base shadow-xl shadow-indigo-600/25 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
           >
             <Send className="w-5 h-5" />
             <span>{submitting ? '제출 처리 중...' : '투표 제출하기'}</span>

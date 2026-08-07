@@ -9,8 +9,7 @@ import {
   FileSpreadsheet,
   FileType,
   X,
-  Check,
-  Sparkles
+  Check
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 
@@ -90,15 +89,15 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
   <title>${project.title} - 투표 결과 보고서</title>
   <style>
     body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; line-height: 1.6; }
-    .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 850px; margin: 0 auto; }
+    .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 850px; margin: 0 auto; border: 1px solid #e2e8f0; }
     h1 { color: #4f46e5; margin-bottom: 8px; font-size: 24px; }
     .meta { color: #64748b; font-size: 14px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; }
-    .question { margin-top: 24px; padding: 20px; background: #f1f5f9; border-radius: 12px; }
+    .question { margin-top: 24px; padding: 20px; background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0; }
     .question h3 { margin: 0 0 12px 0; color: #1e293b; font-size: 16px; }
     .option-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
     .option-text { flex: 1; font-weight: 500; }
     .bar-bg { width: 200px; height: 12px; background: #cbd5e1; border-radius: 6px; overflow: hidden; margin: 0 12px; }
-    .bar-fill { height: 100%; background: #6366f1; border-radius: 6px; }
+    .bar-fill { height: 100%; background: #4f46e5; border-radius: 6px; }
     .count { width: 80px; text-align: right; font-weight: bold; color: #4338ca; }
     .subjective-item { background: white; padding: 10px 14px; border-radius: 8px; margin-top: 6px; font-size: 13px; border: 1px solid #e2e8f0; }
   </style>
@@ -167,7 +166,6 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         link.click();
         URL.revokeObjectURL(url);
       } else if (selectedFormat === 'PDF') {
-        // Generate PDF using jsPDF
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text('OmniVote Survey Results Report', 14, 20);
@@ -221,34 +219,34 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 relative text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 relative text-slate-900">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center">
             <Download className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">결과 내보내기 (Export)</h3>
-            <p className="text-xs text-slate-400">원하는 파일 포맷을 선택하여 내보내세요.</p>
+            <h3 className="text-base font-bold text-slate-900">결과 내보내기 (Export)</h3>
+            <p className="text-xs text-slate-500 font-medium">원하는 파일 포맷을 선택하여 내보내세요.</p>
           </div>
         </div>
 
         {/* Format Selector Grid */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {[
-            { id: 'TXT', name: 'TXT 텍스트', desc: '간편한 메모장 텍스트 파일', icon: FileText, color: 'indigo' },
-            { id: 'PDF', name: 'PDF 문서', desc: '공통 문서용 PDF 보고서', icon: FileType, color: 'rose' },
-            { id: 'HTML', name: 'HTML 웹보고서', desc: '브라우저 시각화 리포트', icon: FileCode, color: 'emerald' },
-            { id: 'CSV', name: 'CSV 엑셀', desc: '데이터 분석용 엑셀 호환', icon: FileSpreadsheet, color: 'amber' }
+            { id: 'TXT', name: 'TXT 텍스트', desc: '간편한 메모장 텍스트 파일', icon: FileText },
+            { id: 'PDF', name: 'PDF 문서', desc: '공통 문서용 PDF 보고서', icon: FileType },
+            { id: 'HTML', name: 'HTML 웹보고서', desc: '브라우저 시각화 리포트', icon: FileCode },
+            { id: 'CSV', name: 'CSV 엑셀', desc: '데이터 분석용 엑셀 호환', icon: FileSpreadsheet }
           ].map(fmt => {
             const IconComponent = fmt.icon;
             const isSelected = selectedFormat === fmt.id;
@@ -256,40 +254,40 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
               <button
                 key={fmt.id}
                 onClick={() => setSelectedFormat(fmt.id as any)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative ${
+                className={`p-3.5 rounded-2xl border text-left transition-all relative ${
                   isSelected
-                    ? 'bg-indigo-600/15 border-indigo-500 shadow-md ring-1 ring-indigo-500/50'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'
+                    ? 'bg-indigo-50/80 border-indigo-600 shadow-sm ring-1 ring-indigo-500/30'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100/60'
                 }`}
               >
                 {isSelected && (
-                  <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center">
+                  <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center">
                     <Check className="w-2.5 h-2.5" />
                   </div>
                 )}
                 <IconComponent
                   className={`w-5 h-5 mb-2 ${
                     isSelected
-                      ? 'text-indigo-400'
+                      ? 'text-indigo-600'
                       : fmt.id === 'PDF'
-                      ? 'text-rose-400'
+                      ? 'text-rose-500'
                       : fmt.id === 'HTML'
-                      ? 'text-emerald-400'
+                      ? 'text-emerald-600'
                       : fmt.id === 'CSV'
-                      ? 'text-amber-400'
-                      : 'text-indigo-400'
+                      ? 'text-amber-600'
+                      : 'text-indigo-600'
                   }`}
                 />
-                <div className="font-bold text-xs text-white">{fmt.name}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">{fmt.desc}</div>
+                <div className="font-bold text-xs text-slate-900">{fmt.name}</div>
+                <div className="text-[10px] text-slate-500 mt-0.5 font-medium">{fmt.desc}</div>
               </button>
             );
           })}
         </div>
 
         {/* Info notice */}
-        <div className="mb-6 p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
-          * 생성된 파일은 사용자 기기의 <span className="text-indigo-400 font-semibold">다운로드(Downloads)</span>{' '}
+        <div className="mb-6 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-medium">
+          * 생성된 파일은 사용자 기기의 <span className="text-indigo-600 font-bold">다운로드(Downloads)</span>{' '}
           폴더에 자동 저장됩니다.
         </div>
 
@@ -297,7 +295,7 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
         <button
           onClick={handleExport}
           disabled={isExporting}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
+          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] active:scale-[0.99]"
         >
           <Download className="w-4 h-4" />
           <span>{selectedFormat} 파일 다운로드 실행</span>

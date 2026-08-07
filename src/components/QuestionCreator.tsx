@@ -10,14 +10,8 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
-  GripVertical,
-  HelpCircle,
-  SlidersHorizontal,
   Layers,
-  Sparkles,
-  PlayCircle,
-  PauseCircle,
-  FileCheck
+  PlayCircle
 } from 'lucide-react';
 
 interface QuestionCreatorProps {
@@ -218,18 +212,18 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+    <div className="h-full flex flex-col bg-slate-50 text-slate-900 overflow-hidden">
       {/* Top Creation Header */}
-      <div className="p-4 lg:p-6 border-b border-slate-800 bg-slate-900/60 backdrop-blur space-y-4">
+      <div className="p-4 lg:p-6 border-b border-slate-200 bg-white space-y-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-base font-bold text-white tracking-wide">
+              <Layers className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 {isNew ? '새 투표 프로젝트 작성' : '투표 질문 구성기 (Creation Zone)'}
               </h2>
             </div>
-            <p className="text-xs text-slate-400 mt-1">다지선다형 및 주관식 문항을 자유롭게 생성 및 설정하세요.</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">다지선다형 및 주관식 문항을 자유롭게 생성 및 설정하세요.</p>
           </div>
 
           {/* Top Save & Publish Actions */}
@@ -237,15 +231,15 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
             <button
               onClick={() => handleSave('DRAFT')}
               disabled={saving}
-              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-300 flex items-center gap-1.5 transition-all shadow-2xs"
             >
-              <Save className="w-3.5 h-3.5 text-slate-400" />
+              <Save className="w-3.5 h-3.5 text-slate-500" />
               <span>임시저장</span>
             </button>
             <button
               onClick={() => handleSave('ACTIVE')}
               disabled={saving}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 flex items-center gap-1.5 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
             >
               <PlayCircle className="w-4 h-4" />
               <span>게시 & 투표 시작</span>
@@ -254,9 +248,9 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
         </div>
 
         {/* Project Title & Status Toolbar */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-1">
           <div className="md:col-span-3">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               프로젝트 제목
             </label>
             <input
@@ -264,18 +258,18 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="예: 2026 하반기 팀 리모트 워크샵 장소 선호도 조사"
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm font-semibold text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all shadow-2xs"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               투표 진행 상태
             </label>
             <select
               value={status}
               onChange={e => setStatus(e.target.value as any)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-600 shadow-2xs"
             >
               <option value="DRAFT">📋 임시저장 (DRAFT)</option>
               <option value="ACTIVE">🟢 진행중 (ACTIVE)</option>
@@ -287,16 +281,16 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
         {/* Notification Alert Message */}
         {message && (
           <div
-            className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs font-medium ${
+            className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs font-bold ${
               message.type === 'success'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-rose-50 border-rose-200 text-rose-800'
             }`}
           >
             {message.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             )}
             <span>{message.text}</span>
           </div>
@@ -308,19 +302,19 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
         {questions.map((q, idx) => (
           <div
             key={q.id}
-            className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-lg relative group transition-all hover:border-slate-700"
+            className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs relative group transition-all hover:border-slate-300 hover:shadow-md"
           >
             {/* Header: Number & Type Badge & Delete */}
-            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800/80">
+            <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-lg bg-indigo-600/20 text-indigo-400 font-extrabold text-xs flex items-center justify-center border border-indigo-500/30">
+                <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-extrabold text-xs flex items-center justify-center border border-indigo-200">
                   Q{idx + 1}
                 </span>
                 <span
-                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                     q.type === 'MULTIPLE_CHOICE'
-                      ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30'
-                      : 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : 'bg-purple-50 text-purple-700 border-purple-200'
                   }`}
                 >
                   {q.type === 'MULTIPLE_CHOICE' ? '다지선다형 질문' : '주관식 질문'}
@@ -329,7 +323,7 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
 
               <button
                 onClick={() => removeQuestion(q.id)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                 title="질문 삭제"
               >
                 <Trash2 className="w-4 h-4" />
@@ -338,13 +332,13 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
 
             {/* Question Title Input */}
             <div className="mb-4">
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">질문 제목</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">질문 제목</label>
               <input
                 type="text"
                 value={q.title}
                 onChange={e => updateQuestionTitle(q.id, e.target.value)}
                 placeholder="질문 내용을 입력하세요..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm font-medium text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white"
               />
             </div>
 
@@ -352,9 +346,9 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
             {q.type === 'MULTIPLE_CHOICE' && (
               <div className="space-y-4">
                 {/* Min / Max Rules Bar */}
-                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       최소 선택 가능 개수 (최저 1개)
                     </label>
                     <input
@@ -363,12 +357,12 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
                       max={q.maxSelect}
                       value={q.minSelect}
                       onChange={e => updateSelectRules(q.id, 'minSelect', parseInt(e.target.value) || 1)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-semibold focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:border-indigo-600"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
                       최대 선택 가능 개수 (최대 {q.options.length}개)
                     </label>
                     <input
@@ -377,7 +371,7 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
                       max={q.options.length}
                       value={q.maxSelect}
                       onChange={e => updateSelectRules(q.id, 'maxSelect', parseInt(e.target.value) || 1)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-semibold focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:border-indigo-600"
                     />
                   </div>
                 </div>
@@ -385,13 +379,13 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
                 {/* Dynamic Options List */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-300">
+                    <span className="text-xs font-bold text-slate-700">
                       선택 항목 목록 ({q.options.length}개 / 최소 2개 ~ 최대 20개)
                     </span>
                     <button
                       onClick={() => addOption(q.id)}
                       disabled={q.options.length >= 20}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-semibold border border-indigo-500/30 flex items-center gap-1 transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white text-xs font-bold border border-indigo-200 flex items-center gap-1 transition-all"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>항목 추가</span>
@@ -401,18 +395,18 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
                   <div className="space-y-2">
                     {q.options.map((opt, oIdx) => (
                       <div key={opt.id} className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 w-5 text-right">{oIdx + 1}.</span>
+                        <span className="text-xs font-bold text-slate-400 w-5 text-right">{oIdx + 1}.</span>
                         <input
                           type="text"
                           value={opt.text}
                           onChange={e => updateOptionText(q.id, opt.id, e.target.value)}
                           placeholder={`항목 ${oIdx + 1} 입력`}
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white"
                         />
                         <button
                           onClick={() => removeOption(q.id, opt.id)}
                           disabled={q.options.length <= 2}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors"
                           title="항목 삭제"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -426,13 +420,13 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
 
             {/* If Subjective Question */}
             {q.type === 'SUBJECTIVE' && (
-              <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-400">
-                <p className="mb-2 font-medium">자유로운 서술형 텍스트 작성 영역이 투표자 화면에 제공됩니다.</p>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 font-medium">
+                <p className="mb-2 font-bold text-slate-700">자유로운 서술형 텍스트 작성 영역이 투표자 화면에 제공됩니다.</p>
                 <textarea
                   disabled
                   rows={2}
                   placeholder="[투표자 주관식 작성 예시] 의견을 입력해 주세요..."
-                  className="w-full p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 text-xs text-slate-500 cursor-not-allowed resize-none"
+                  className="w-full p-2.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-400 cursor-not-allowed resize-none"
                 />
               </div>
             )}
@@ -443,16 +437,16 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
         <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
           <button
             onClick={() => addQuestion('MULTIPLE_CHOICE')}
-            className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 text-indigo-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+            className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-2xs"
           >
-            <ListPlus className="w-4 h-4 text-indigo-400" />
+            <ListPlus className="w-4 h-4 text-indigo-600" />
             <span>+ 다지선다 질문 추가</span>
           </button>
           <button
             onClick={() => addQuestion('SUBJECTIVE')}
-            className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/50 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+            className="w-full sm:w-1/2 py-3 px-4 rounded-xl bg-white hover:bg-purple-50 border border-purple-200 text-purple-700 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-2xs"
           >
-            <MessageSquarePlus className="w-4 h-4 text-purple-400" />
+            <MessageSquarePlus className="w-4 h-4 text-purple-600" />
             <span>+ 주관식 질문 추가</span>
           </button>
         </div>

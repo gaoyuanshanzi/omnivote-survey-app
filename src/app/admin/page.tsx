@@ -6,7 +6,7 @@ import SidebarDirectory from '@/components/SidebarDirectory';
 import QuestionCreator from '@/components/QuestionCreator';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { ProjectItem } from '@/lib/types';
-import { LayoutGrid, Layers, BarChart3, X, PlusCircle } from 'lucide-react';
+import { Layers, BarChart3, X } from 'lucide-react';
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -98,7 +98,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans">
+    <div className="h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden font-sans">
       {/* Top Navbar Header */}
       <Navbar
         onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
@@ -106,26 +106,26 @@ export default function AdminPage() {
       />
 
       {/* Main Container */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative bg-slate-100">
         {/* Mobile Sliding Drawer Overlay */}
         {isMobileDrawerOpen && (
           <div
             onClick={() => setIsMobileDrawerOpen(false)}
-            className="lg:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm animate-fade-in"
+            className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs animate-fade-in"
           />
         )}
 
-        {/* Panel 1: Sidebar Directory (PC: 3분할 1열, Mobile: Sliding Drawer) */}
+        {/* Panel 1: Sidebar Directory (PC: 3분할 1열 flex-row, Mobile: Drawer under Top-16 Navbar) */}
         <aside
-          className={`fixed lg:static z-50 lg:z-auto top-0 bottom-0 left-0 w-80 lg:w-72 xl:w-80 shrink-0 h-full bg-slate-900 transition-transform duration-300 ease-in-out ${
-            isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          className={`fixed md:static z-50 md:z-auto top-16 md:top-0 bottom-0 left-0 w-80 md:w-72 xl:w-80 shrink-0 h-[calc(100vh-4rem)] md:h-full bg-white transition-transform duration-300 ease-in-out shadow-xl md:shadow-none ${
+            isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
         >
           <div className="h-full relative">
             {/* Mobile close button inside drawer */}
             <button
               onClick={() => setIsMobileDrawerOpen(false)}
-              className="lg:hidden absolute top-4 right-3 z-50 p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800"
+              className="md:hidden absolute top-3 right-3 z-50 p-1.5 rounded-lg text-slate-500 hover:text-slate-900 bg-slate-100"
             >
               <X className="w-4 h-4" />
             </button>
@@ -140,13 +140,13 @@ export default function AdminPage() {
         </aside>
 
         {/* Mobile Tab Switcher Bar */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-slate-900/95 border-t border-slate-800 backdrop-blur grid grid-cols-2 p-1.5 gap-2">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-white/95 border-t border-slate-200 backdrop-blur grid grid-cols-2 p-1.5 gap-2 shadow-lg">
           <button
             onClick={() => setMobileTab('CREATOR')}
             className={`flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
               mobileTab === 'CREATOR'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -156,8 +156,8 @@ export default function AdminPage() {
             onClick={() => setMobileTab('DASHBOARD')}
             className={`flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
               mobileTab === 'DASHBOARD'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
@@ -166,11 +166,11 @@ export default function AdminPage() {
         </div>
 
         {/* PC: Panels 2 & 3 Split (Left Main: Question Creator, Right Main: Dashboard) */}
-        <main className="flex-1 flex flex-col lg:flex-row overflow-hidden pb-14 lg:pb-0 min-w-0">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden pb-14 md:pb-0 min-w-0 bg-slate-100">
           {/* Panel 2: Question Creation Zone (Center) */}
           <div
-            className={`flex-1 min-w-0 h-full border-r border-slate-800 overflow-hidden ${
-              mobileTab === 'CREATOR' ? 'block' : 'hidden lg:block'
+            className={`flex-1 min-w-0 h-full border-r border-slate-200 overflow-hidden ${
+              mobileTab === 'CREATOR' ? 'block' : 'hidden md:block'
             }`}
           >
             <QuestionCreator
@@ -183,7 +183,7 @@ export default function AdminPage() {
           {/* Panel 3: Dashboard Zone (Right) */}
           <div
             className={`flex-1 min-w-0 h-full overflow-hidden ${
-              mobileTab === 'DASHBOARD' ? 'block' : 'hidden lg:block'
+              mobileTab === 'DASHBOARD' ? 'block' : 'hidden md:block'
             }`}
           >
             <ResultsDashboard project={selectedProject} onRefreshProject={fetchProjects} />
