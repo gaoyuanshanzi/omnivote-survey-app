@@ -135,7 +135,8 @@ export async function saveProject(projectData: Partial<ProjectItem>): Promise<Pr
   const store = loadStore();
   const isEdit = !!projectData.id && store.projects.some(p => p.id === projectData.id);
   const projId = projectData.id || `proj-${Date.now()}`;
-  const now = new Date().toISOString();
+  // Use client-provided updatedAt if given (important to preserve status-change timestamps)
+  const now = projectData.updatedAt || new Date().toISOString();
 
   const formattedQuestions = (projectData.questions || []).map((q, qIdx) => ({
     id: q.id || `q-${projId}-${qIdx}-${Date.now()}`,

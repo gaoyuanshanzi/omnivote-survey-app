@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import SidebarDirectory from '@/components/SidebarDirectory';
 import QuestionCreator from '@/components/QuestionCreator';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { ProjectItem } from '@/lib/types';
+
+// Track user-initiated status changes by projectId so polling never reverts them
+const statusLock = new Map<string, { status: string; lockedAt: number }>();
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -13,92 +16,93 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [mobileTab, setMobileTab] = useState<'SIDEBAR' | 'CREATOR' | 'DASHBOARD'>('SIDEBAR');
   const [isNewProjectMode, setIsNewProjectMode] = useState(false);
+  const isRestoringRef = useRef(false);
+
+  const getLocalCache = (): ProjectItem[] => {
+    try {
+      const raw = localStorage.getItem('omnivote_projects_cache');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  };
+
+  const setLocalCache = (projects: ProjectItem[]) => {
+    if (projects.length > 0) {
+      localStorage.setItem('omnivote_projects_cache', JSON.stringify(projects));
+    }
+  };
 
   const fetchProjects = async () => {
+    if (isRestoringRef.current) return;
     try {
-      let localCache: ProjectItem[] = [];
-      const localRaw = localStorage.getItem('omnivote_projects_cache');
-      if (localRaw) {
-        try {
-          const parsed = JSON.parse(localRaw);
-          if (Array.isArray(parsed)) localCache = parsed;
-        } catch {}
-      }
+      const localCache = getLocalCache();
 
       const res = await fetch('/api/projects');
       const data = await res.json();
 
-      if (data.success) {
-        let serverProjects: ProjectItem[] = data.projects || [];
+      if (!data.success) return;
 
-        // Auto-restore if Vercel serverless instance reset to empty array
-        if (serverProjects.length === 0 && localCache.length > 0) {
-          for (const p of localCache) {
-            await fetch('/api/projects', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(p)
-            });
-          }
-          const reFetch = await fetch('/api/projects');
-          const reData = await reFetch.json();
-          if (reData.success && reData.projects && reData.projects.length > 0) {
-            serverProjects = reData.projects;
-          } else {
-            serverProjects = localCache;
-          }
+      let serverProjects: ProjectItem[] = data.projects || [];
+
+      // Auto-restore to server if serverless instance lost data
+      if (serverProjects.length === 0 && localCache.length > 0) {
+        isRestoringRef.current = true;
+        for (const p of localCache) {
+          await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+          });
+        }
+        const reFetch = await fetch('/api/projects');
+        const reData = await reFetch.json();
+        serverProjects = (reData.success && reData.projects?.length > 0)
+          ? reData.projects
+          : localCache;
+        isRestoringRef.current = false;
+      }
+
+      // Build final list based ONLY on server projects (no ghost local-only projects)
+      const finalProjects = serverProjects.map(sp => {
+        let mergedP = { ...sp };
+
+        // Apply status lock if user recently changed status (within 30s)
+        const lock = statusLock.get(sp.id);
+        if (lock && Date.now() - lock.lockedAt < 30000) {
+          mergedP.status = lock.status as any;
         }
 
-        const projectMap = new Map<string, ProjectItem>();
-        localCache.forEach(lp => projectMap.set(lp.id, lp));
-
-        serverProjects.forEach(sp => {
-          const lp = projectMap.get(sp.id);
-          let mergedP = { ...sp };
-          if (lp) {
-            if (lp.updatedAt && sp.updatedAt && new Date(lp.updatedAt).getTime() > new Date(sp.updatedAt).getTime()) {
-              mergedP.status = lp.status;
-              mergedP.title = lp.title;
-              mergedP.updatedAt = lp.updatedAt;
-            } else if (lp.status) {
-              mergedP.status = lp.status;
+        // Sync responseCount with local response cache
+        const respKey = `omnivote_resp_cache_${sp.id}`;
+        try {
+          const respRaw = localStorage.getItem(respKey);
+          if (respRaw) {
+            const cached = JSON.parse(respRaw);
+            if (Array.isArray(cached)) {
+              mergedP.responseCount = Math.max(mergedP.responseCount || 0, cached.length);
             }
           }
-          const cacheKey = `omnivote_resp_cache_${sp.id}`;
-          const localRawResp = localStorage.getItem(cacheKey);
-          if (localRawResp) {
-            try {
-              const cachedResps = JSON.parse(localRawResp);
-              if (Array.isArray(cachedResps)) {
-                mergedP.responseCount = Math.max(mergedP.responseCount || 0, cachedResps.length);
-              }
-            } catch {}
-          }
-          projectMap.set(sp.id, mergedP);
-        });
+        } catch {}
 
-        const finalProjects = Array.from(projectMap.values());
-        setProjects(finalProjects);
+        return mergedP;
+      });
 
-        if (finalProjects.length > 0) {
-          localStorage.setItem('omnivote_projects_cache', JSON.stringify(finalProjects));
-        }
+      setProjects(finalProjects);
+      setLocalCache(finalProjects);
 
-        if (!selectedProjectId && finalProjects.length > 0) {
-          setSelectedProjectId(finalProjects[0].id);
-        }
-      }
+      setSelectedProjectId(prev => {
+        if (!prev && finalProjects.length > 0) return finalProjects[0].id;
+        return prev;
+      });
     } catch (err) {
       console.error('Fetch projects error:', err);
-      const localRaw = localStorage.getItem('omnivote_projects_cache');
-      if (localRaw) {
-        try {
-          const cached = JSON.parse(localRaw);
-          if (Array.isArray(cached) && cached.length > 0) {
-            setProjects(cached);
-            if (!selectedProjectId) setSelectedProjectId(cached[0].id);
-          }
-        } catch {}
+      const cached = getLocalCache();
+      if (cached.length > 0) {
+        setProjects(cached);
+        setSelectedProjectId(prev => prev || cached[0].id);
       }
     } finally {
       setLoading(false);
@@ -107,7 +111,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchProjects();
-    const interval = setInterval(fetchProjects, 3000);
+    const interval = setInterval(fetchProjects, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,13 +134,18 @@ export default function AdminPage() {
       const now = new Date().toISOString();
       const fullUpdated = { ...updatedData, updatedAt: now };
 
-      // Immediately lock and update local state + localStorage cache
+      // Lock the status for this project so polling won't revert it
+      if (fullUpdated.id && fullUpdated.status) {
+        statusLock.set(fullUpdated.id, { status: fullUpdated.status, lockedAt: Date.now() });
+      }
+
+      // Immediately update local state and cache
       setProjects(prev => {
         const exists = prev.some(p => p.id === fullUpdated.id);
         const nextList = exists
-          ? prev.map(p => (p.id === fullUpdated.id ? ({ ...p, ...fullUpdated } as ProjectItem) : p))
+          ? prev.map(p => p.id === fullUpdated.id ? ({ ...p, ...fullUpdated } as ProjectItem) : p)
           : [fullUpdated as ProjectItem, ...prev];
-        localStorage.setItem('omnivote_projects_cache', JSON.stringify(nextList));
+        setLocalCache(nextList);
         return nextList;
       });
 
@@ -165,9 +174,10 @@ export default function AdminPage() {
       const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
+        statusLock.delete(id);
         const remaining = projects.filter(p => p.id !== id);
         setProjects(remaining);
-        localStorage.setItem('omnivote_projects_cache', JSON.stringify(remaining));
+        setLocalCache(remaining);
         if (selectedProjectId === id) {
           setSelectedProjectId(remaining.length > 0 ? remaining[0].id : null);
         }
