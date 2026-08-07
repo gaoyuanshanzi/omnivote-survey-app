@@ -65,7 +65,7 @@ let mockProjects: ProjectItem[] = [
   {
     id: 'proj-3',
     title: '2026 상반기 분기 실적 및 복지 만족도 조사',
-    status: 'CLOSED',
+    status: 'ACTIVE',
     createdAt: new Date(Date.now() - 86400000 * 14).toISOString(),
     updatedAt: new Date(Date.now() - 86400000 * 7).toISOString(),
     responseCount: 38,
