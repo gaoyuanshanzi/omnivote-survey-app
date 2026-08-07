@@ -47,14 +47,107 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
   const [rawSearch, setRawSearch] = useState('');
   const [subjectiveSearch, setSubjectiveSearch] = useState('');
 
+  const recalculateSummary = (proj: ProjectItem, responses: ResponseItem[]): DashboardSummary => {
+    const totalResponses = responses.length;
+    const questionStats = proj.questions.map(q => {
+      let totalAnswers = 0;
+      const optionMap: { [optId: string]: number } = {};
+      q.options.forEach(o => { optionMap[o.id] = 0; });
+      const subjectiveAnswers: { id: string; voterName?: string; text: string; createdAt: string }[] = [];
+
+      responses.forEach(r => {
+        const ans = r.answers.find(a => a.questionId === q.id);
+        if (ans) {
+          totalAnswers++;
+          if (q.type === 'MULTIPLE_CHOICE' && ans.selectedOptions) {
+            ans.selectedOptions.forEach(optIdOrText => {
+              const foundOpt = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+              if (foundOpt) {
+                optionMap[foundOpt.id] = (optionMap[foundOpt.id] || 0) + 1;
+              }
+            });
+          }
+          if (q.type === 'SUBJECTIVE' && ans.textAnswer && ans.textAnswer.trim().length > 0) {
+            subjectiveAnswers.push({
+              id: r.id,
+              voterName: r.voterName || '익명 투표자',
+              text: ans.textAnswer,
+              createdAt: r.createdAt
+            });
+          }
+        }
+      });
+
+      const optionCounts = q.options.map(o => {
+        const count = optionMap[o.id] || 0;
+        const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0;
+        return {
+          optionId: o.id,
+          text: o.text,
+          count,
+          percentage
+        };
+      });
+
+      let topOption: { text: string; count: number; percentage: number } | undefined = undefined;
+      if (q.type === 'MULTIPLE_CHOICE' && optionCounts.length > 0) {
+        const sorted = [...optionCounts].sort((a, b) => b.count - a.count);
+        if (sorted[0] && sorted[0].count > 0) {
+          topOption = {
+            text: sorted[0].text,
+            count: sorted[0].count,
+            percentage: sorted[0].percentage
+          };
+        }
+      }
+
+      return {
+        questionId: q.id,
+        title: q.title,
+        type: q.type,
+        totalAnswers,
+        optionCounts,
+        subjectiveAnswers,
+        topOption
+      };
+    });
+
+    return {
+      totalResponses,
+      rawResponses: responses,
+      questionStats
+    };
+  };
+
   const fetchSummary = async () => {
     if (!project) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/projects/${project.id}/dashboard`);
       const data = await res.json();
-      if (data.success) {
-        setSummary(data.summary);
+      if (data.success && data.summary) {
+        const cacheKey = `omnivote_resp_cache_${project.id}`;
+        let cachedResponses: ResponseItem[] = [];
+        const localRaw = localStorage.getItem(cacheKey);
+        if (localRaw) {
+          try { cachedResponses = JSON.parse(localRaw); } catch {}
+        }
+
+        const apiResponses: ResponseItem[] = data.summary.rawResponses || [];
+
+        // Deduplicate and merge by ID (prevents count drops across serverless instances)
+        const respMap = new Map<string, ResponseItem>();
+        cachedResponses.forEach(r => respMap.set(r.id, r));
+        apiResponses.forEach(r => respMap.set(r.id, r));
+
+        const mergedRawResponses = Array.from(respMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        localStorage.setItem(cacheKey, JSON.stringify(mergedRawResponses));
+
+        const updatedSummary = recalculateSummary(project, mergedRawResponses);
+        setSummary(updatedSummary);
       }
     } catch (err) {
       console.error(err);

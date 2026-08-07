@@ -49,10 +49,27 @@ export default function AdminPage() {
           }
         }
 
-        setProjects(data.projects);
-        localStorage.setItem('omnivote_projects_cache', JSON.stringify(data.projects));
-        if (!selectedProjectId && data.projects.length > 0) {
-          setSelectedProjectId(data.projects[0].id);
+        const syncedProjects = data.projects.map(p => {
+          const cacheKey = `omnivote_resp_cache_${p.id}`;
+          const localRaw = localStorage.getItem(cacheKey);
+          if (localRaw) {
+            try {
+              const cached = JSON.parse(localRaw);
+              if (Array.isArray(cached)) {
+                return {
+                  ...p,
+                  responseCount: Math.max(p.responseCount || 0, cached.length)
+                };
+              }
+            } catch {}
+          }
+          return p;
+        });
+
+        setProjects(syncedProjects);
+        localStorage.setItem('omnivote_projects_cache', JSON.stringify(syncedProjects));
+        if (!selectedProjectId && syncedProjects.length > 0) {
+          setSelectedProjectId(syncedProjects[0].id);
         }
       }
     } catch (err) {
