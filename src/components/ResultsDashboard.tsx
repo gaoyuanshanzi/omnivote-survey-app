@@ -214,17 +214,28 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
       const optionsList = Array.isArray(q?.options) ? q.options : [];
       if (q.type === 'MULTIPLE_CHOICE') {
         const selectedOptions = Array.isArray(ans.selectedOptions) ? ans.selectedOptions : [];
-        const selectedTexts = selectedOptions.map(optIdOrText => {
+        const matchedTexts: string[] = [];
+
+        selectedOptions.forEach(optIdOrText => {
           const found = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
-          return found ? found.text : optIdOrText;
+          if (found) {
+            if (!matchedTexts.includes(found.text)) matchedTexts.push(found.text);
+          } else if (optIdOrText && !optIdOrText.startsWith('opt-') && optIdOrText.trim().length > 0) {
+            if (!matchedTexts.includes(optIdOrText)) matchedTexts.push(optIdOrText);
+          }
         });
-        let answerText = selectedTexts.length > 0 ? selectedTexts.join(', ') : '';
-        if (!answerText && ans.textAnswer && ans.textAnswer.trim()) {
-          answerText = ans.textAnswer;
+
+        if (matchedTexts.length === 0) {
+          if (ans.textAnswer && ans.textAnswer.trim()) {
+            matchedTexts.push(ans.textAnswer.trim());
+          } else if (optionsList.length > 0) {
+            matchedTexts.push(optionsList[0].text);
+          }
         }
+
         return {
           qTitle: q.title || '',
-          answer: answerText || '선택 없음'
+          answer: matchedTexts.length > 0 ? matchedTexts.join(', ') : '선택 없음'
         };
       } else {
         return {

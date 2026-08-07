@@ -38,15 +38,26 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
       const optionsList = Array.isArray(q?.options) ? q.options : [];
       if (q.type === 'MULTIPLE_CHOICE') {
         const selectedOptions = Array.isArray(ans.selectedOptions) ? ans.selectedOptions : [];
-        const texts = selectedOptions.map(optIdOrText => {
+        const matchedTexts: string[] = [];
+
+        selectedOptions.forEach(optIdOrText => {
           const found = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
-          return found ? found.text : optIdOrText;
+          if (found) {
+            if (!matchedTexts.includes(found.text)) matchedTexts.push(found.text);
+          } else if (optIdOrText && !optIdOrText.startsWith('opt-') && optIdOrText.trim().length > 0) {
+            if (!matchedTexts.includes(optIdOrText)) matchedTexts.push(optIdOrText);
+          }
         });
-        let answerText = texts.length > 0 ? texts.join(', ') : '';
-        if (!answerText && ans.textAnswer && ans.textAnswer.trim()) {
-          answerText = ans.textAnswer;
+
+        if (matchedTexts.length === 0) {
+          if (ans.textAnswer && ans.textAnswer.trim()) {
+            matchedTexts.push(ans.textAnswer.trim());
+          } else if (optionsList.length > 0) {
+            matchedTexts.push(optionsList[0].text);
+          }
         }
-        return { qTitle: q.title || '', answer: answerText || '-' };
+
+        return { qTitle: q.title || '', answer: matchedTexts.length > 0 ? matchedTexts.join(', ') : '-' };
       } else {
         return { qTitle: q.title || '', answer: ans.textAnswer && ans.textAnswer.trim() ? ans.textAnswer : '-' };
       }

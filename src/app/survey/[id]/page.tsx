@@ -44,23 +44,23 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
   }, [id]);
 
   // Handle option checkbox / radio toggle
-  const handleOptionToggle = (q: QuestionItem, optId: string) => {
+  const handleOptionToggle = (q: QuestionItem, opt: { id: string; text: string }) => {
     const current = formState[q.id]?.selectedOptions || [];
     let updated: string[];
 
     if (q.maxSelect === 1) {
       // Single selection (Radio behavior)
-      updated = [optId];
+      updated = [opt.id, opt.text];
     } else {
       // Multiple selection
-      if (current.includes(optId)) {
-        updated = current.filter(id => id !== optId);
+      if (current.includes(opt.id) || current.includes(opt.text)) {
+        updated = current.filter(val => val !== opt.id && val !== opt.text);
       } else {
-        if (current.length >= q.maxSelect) {
+        if (current.filter(val => q.options.some(o => o.id === val)).length >= q.maxSelect) {
           alert(`이 질문은 최대 ${q.maxSelect}개까지만 선택할 수 있습니다.`);
           return;
         }
-        updated = [...current, optId];
+        updated = [...current, opt.id, opt.text];
       }
     }
 
@@ -256,7 +256,7 @@ export default function PublicSurveyPage({ params }: { params: Promise<{ id: str
                     return (
                       <div
                         key={opt.id}
-                        onClick={() => handleOptionToggle(q, opt.id)}
+                        onClick={() => handleOptionToggle(q, opt)}
                         className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                           isChecked
                             ? 'bg-indigo-50/90 border-indigo-600 text-indigo-950 shadow-xs'
