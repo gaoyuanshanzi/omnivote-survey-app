@@ -62,9 +62,16 @@ export default function AdminPage() {
 
       if (!data.success) return;
 
-      let serverProjects: ProjectItem[] = (data.projects || []).filter(
-        (p: ProjectItem) => !deletedIds.has(p.id)
-      );
+      const allServerProjects: ProjectItem[] = data.projects || [];
+
+      // Actively re-delete any "ghost" projects that a Lambda instance still has
+      // This kills them across all warm Lambda instances over time
+      const ghostProjects = allServerProjects.filter(p => deletedIds.has(p.id));
+      for (const ghost of ghostProjects) {
+        fetch(`/api/projects/${ghost.id}`, { method: 'DELETE' }).catch(() => {});
+      }
+
+      let serverProjects = allServerProjects.filter(p => !deletedIds.has(p.id));
 
       // Auto-restore ONLY non-deleted projects if serverless instance lost data
       if (serverProjects.length === 0 && localCache.length > 0) {
