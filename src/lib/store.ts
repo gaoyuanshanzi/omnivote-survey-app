@@ -106,10 +106,6 @@ function loadStore(): PersistentData {
       const data = fs.readFileSync(filePath, 'utf-8');
       const parsed = JSON.parse(data);
       if (parsed && Array.isArray(parsed.projects) && Array.isArray(parsed.responses)) {
-        if (parsed.projects.length === 0) {
-          parsed.projects = [initialSeedProject];
-          parsed.responses = initialSeedResponses;
-        }
         globalThis.__omnivote_store = parsed;
         return parsed;
       }

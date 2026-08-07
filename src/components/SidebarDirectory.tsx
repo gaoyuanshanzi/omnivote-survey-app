@@ -166,7 +166,7 @@ export default function SidebarDirectory({
 
                   <button
                     onClick={e => onDeleteProject(proj.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all shrink-0"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shrink-0"
                     title="프로젝트 삭제"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

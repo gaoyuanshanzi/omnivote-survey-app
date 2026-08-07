@@ -30,9 +30,7 @@ export default function AdminPage() {
   };
 
   const setLocalCache = (projects: ProjectItem[]) => {
-    if (projects.length > 0) {
-      localStorage.setItem('omnivote_projects_cache', JSON.stringify(projects));
-    }
+    localStorage.setItem('omnivote_projects_cache', JSON.stringify(projects));
   };
 
   const fetchProjects = async () => {
