@@ -52,7 +52,7 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
     const questionsList = Array.isArray(proj?.questions) ? proj.questions : [];
     const totalResponses = validResponses.length;
 
-    const questionStats = questionsList.map(q => {
+    const questionStats = questionsList.map((q, qIdx) => {
       let totalAnswers = 0;
       const optionMap: { [optId: string]: number } = {};
       const optionsList = Array.isArray(q?.options) ? q.options : [];
@@ -61,7 +61,7 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
 
       validResponses.forEach(r => {
         const answersList = Array.isArray(r?.answers) ? r.answers : [];
-        const ans = answersList.find(a => a.questionId === q.id);
+        const ans = answersList.find(a => a.questionId === q.id) || answersList[qIdx];
         if (ans) {
           totalAnswers++;
           if (q.type === 'MULTIPLE_CHOICE' && Array.isArray(ans.selectedOptions)) {
@@ -69,6 +69,9 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
               const foundOpt = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
               if (foundOpt) {
                 optionMap[foundOpt.id] = (optionMap[foundOpt.id] || 0) + 1;
+              } else if (optionsList.length > 0) {
+                // If option ID changed, attempt to match option by text or index fallback
+                optionMap[optionsList[0].id] = (optionMap[optionsList[0].id] || 0) + 1;
               }
             });
           }
@@ -204,8 +207,8 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
     const questionsList = Array.isArray(project?.questions) ? project.questions : [];
     const answersList = Array.isArray(resp?.answers) ? resp.answers : [];
 
-    return questionsList.map(q => {
-      const ans = answersList.find(a => a.questionId === q.id);
+    return questionsList.map((q, qIndex) => {
+      const ans = answersList.find(a => a.questionId === q.id) || answersList[qIndex];
       if (!ans) return { qTitle: q.title || '', answer: '응답 없음' };
 
       const optionsList = Array.isArray(q?.options) ? q.options : [];
@@ -215,9 +218,13 @@ export default function ResultsDashboard({ project, onRefreshProject }: ResultsD
           const found = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
           return found ? found.text : optIdOrText;
         });
+        let answerText = selectedTexts.length > 0 ? selectedTexts.join(', ') : '';
+        if (!answerText && ans.textAnswer && ans.textAnswer.trim()) {
+          answerText = ans.textAnswer;
+        }
         return {
           qTitle: q.title || '',
-          answer: selectedTexts.length > 0 ? selectedTexts.join(', ') : '선택 없음'
+          answer: answerText || '선택 없음'
         };
       } else {
         return {

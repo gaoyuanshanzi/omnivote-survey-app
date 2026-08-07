@@ -28,18 +28,27 @@ export default function ExportModal({ isOpen, onClose, project, summary }: Expor
 
   // Helper to format a single response's answers
   const getFormattedAnswers = (resp: ResponseItem) => {
-    return project.questions.map(q => {
-      const ans = resp.answers.find(a => a.questionId === q.id);
-      if (!ans) return { qTitle: q.title, answer: '-' };
+    const questionsList = Array.isArray(project?.questions) ? project.questions : [];
+    const answersList = Array.isArray(resp?.answers) ? resp.answers : [];
 
+    return questionsList.map((q, qIndex) => {
+      const ans = answersList.find(a => a.questionId === q.id) || answersList[qIndex];
+      if (!ans) return { qTitle: q.title || '', answer: '-' };
+
+      const optionsList = Array.isArray(q?.options) ? q.options : [];
       if (q.type === 'MULTIPLE_CHOICE') {
-        const texts = (ans.selectedOptions || []).map(optIdOrText => {
-          const found = q.options.find(o => o.id === optIdOrText || o.text === optIdOrText);
+        const selectedOptions = Array.isArray(ans.selectedOptions) ? ans.selectedOptions : [];
+        const texts = selectedOptions.map(optIdOrText => {
+          const found = optionsList.find(o => o.id === optIdOrText || o.text === optIdOrText);
           return found ? found.text : optIdOrText;
         });
-        return { qTitle: q.title, answer: texts.length > 0 ? texts.join(', ') : '-' };
+        let answerText = texts.length > 0 ? texts.join(', ') : '';
+        if (!answerText && ans.textAnswer && ans.textAnswer.trim()) {
+          answerText = ans.textAnswer;
+        }
+        return { qTitle: q.title || '', answer: answerText || '-' };
       } else {
-        return { qTitle: q.title, answer: ans.textAnswer && ans.textAnswer.trim() ? ans.textAnswer : '-' };
+        return { qTitle: q.title || '', answer: ans.textAnswer && ans.textAnswer.trim() ? ans.textAnswer : '-' };
       }
     });
   };

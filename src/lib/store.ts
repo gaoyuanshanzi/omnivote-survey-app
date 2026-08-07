@@ -134,21 +134,24 @@ export async function saveProject(projectData: Partial<ProjectItem>): Promise<Pr
   const projId = projectData.id || `proj-${Date.now()}`;
   const now = projectData.updatedAt || new Date().toISOString();
 
-  const formattedQuestions = (projectData.questions || []).map((q, qIdx) => ({
-    id: q.id || `q-${projId}-${qIdx}-${Date.now()}`,
-    projectId: projId,
-    type: q.type,
-    title: q.title || '제목 없는 질문',
-    minSelect: Math.max(1, q.minSelect || 1),
-    maxSelect: Math.max(1, q.maxSelect || 1),
-    order: qIdx + 1,
-    options: (q.options || []).map((opt, oIdx) => ({
-      id: opt.id || `opt-${projId}-${qIdx}-${oIdx}-${Date.now()}`,
-      questionId: q.id,
-      text: opt.text || `항목 ${oIdx + 1}`,
-      order: oIdx + 1
-    }))
-  }));
+  const formattedQuestions = (projectData.questions || []).map((q, qIdx) => {
+    const qId = q.id || `q-${projId}-${qIdx}`;
+    return {
+      id: qId,
+      projectId: projId,
+      type: q.type,
+      title: q.title || '제목 없는 질문',
+      minSelect: Math.max(1, q.minSelect || 1),
+      maxSelect: Math.max(1, q.maxSelect || 1),
+      order: qIdx + 1,
+      options: (q.options || []).map((opt, oIdx) => ({
+        id: opt.id || `opt-${projId}-${qIdx}-${oIdx}`,
+        questionId: qId,
+        text: opt.text || `항목 ${oIdx + 1}`,
+        order: oIdx + 1
+      }))
+    };
+  });
 
   const updatedProject: ProjectItem = {
     id: projId,
