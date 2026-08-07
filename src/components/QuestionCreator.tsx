@@ -441,7 +441,13 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
               </label>
               <select
                 value={status}
-                onChange={e => setStatus(e.target.value as any)}
+                onChange={async e => {
+                  const newStatus = e.target.value as 'ACTIVE' | 'CLOSED' | 'DRAFT';
+                  setStatus(newStatus);
+                  if (project?.id) {
+                    await handleSave(newStatus);
+                  }
+                }}
                 className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-600 shadow-2xs"
               >
                 <option value="DRAFT">📋 임시저장 (DRAFT)</option>
