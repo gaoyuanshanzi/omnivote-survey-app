@@ -166,37 +166,55 @@ export async function saveProject(projectData: Partial<ProjectItem>): Promise<Pr
   try {
     if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgresql')) {
       if (isEdit) {
-        await prisma.project.update({
-          where: { id: projId },
-          data: {
-            title: updatedProject.title,
-            status: updatedProject.status,
-            questions: {
-              deleteMany: {},
-              create: updatedProject.questions.map(q => ({
-                id: q.id,
-                type: q.type,
-                title: q.title,
-                minSelect: q.minSelect,
-                maxSelect: q.maxSelect,
-                order: q.order,
-                options: {
-                  create: q.options.map(o => ({
-                    id: o.id,
-                    text: o.text,
-                    order: o.order
-                  }))
-                }
-              }))
+        // Check if questions have actually changed vs just a status update
+        const existingProject = await getProjectById(projId);
+        const questionsChanged = !existingProject ||
+          JSON.stringify(existingProject.questions.map(q => ({ id: q.id, title: q.title, options: q.options.map(o => ({ id: o.id, text: o.text })) }))) !==
+          JSON.stringify(updatedProject.questions.map(q => ({ id: q.id, title: q.title, options: q.options.map(o => ({ id: o.id, text: o.text })) })));
+
+        if (questionsChanged) {
+          // Full update: recreate questions (answers cascade-delete, so only do this when questions truly change)
+          await prisma.project.update({
+            where: { id: projId },
+            data: {
+              title: updatedProject.title,
+              status: updatedProject.status as any,
+              questions: {
+                deleteMany: {},
+                create: updatedProject.questions.map(q => ({
+                  id: q.id,
+                  type: q.type,
+                  title: q.title,
+                  minSelect: q.minSelect,
+                  maxSelect: q.maxSelect,
+                  order: q.order,
+                  options: {
+                    create: q.options.map(o => ({
+                      id: o.id,
+                      text: o.text,
+                      order: o.order
+                    }))
+                  }
+                }))
+              }
             }
-          }
-        });
+          });
+        } else {
+          // Status/title-only update: do NOT touch questions or answers
+          await prisma.project.update({
+            where: { id: projId },
+            data: {
+              title: updatedProject.title,
+              status: updatedProject.status as any,
+            }
+          });
+        }
       } else {
         await prisma.project.create({
           data: {
             id: updatedProject.id,
             title: updatedProject.title,
-            status: updatedProject.status,
+            status: updatedProject.status as any,
             questions: {
               create: updatedProject.questions.map(q => ({
                 id: q.id,
