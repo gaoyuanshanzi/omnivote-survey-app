@@ -71,14 +71,12 @@ export async function getProjects(): Promise<ProjectItem[]> {
         },
         orderBy: { createdAt: 'desc' }
       });
-      if (dbProjects.length > 0) {
-        return dbProjects.map(p => ({
-          ...p,
-          createdAt: p.createdAt.toISOString(),
-          updatedAt: p.updatedAt.toISOString(),
-          responseCount: p._count.responses
-        }));
-      }
+      return dbProjects.map(p => ({
+        ...p,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        responseCount: p._count.responses
+      }));
     }
   } catch (error) {
     console.warn('Prisma DB connect warning, falling back to persistent store:', error);
