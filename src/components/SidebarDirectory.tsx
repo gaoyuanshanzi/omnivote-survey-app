@@ -66,7 +66,7 @@ export default function SidebarDirectory({
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-900/70 border-r border-slate-800 text-slate-200">
+    <div className="h-full flex flex-col bg-slate-900 border-r border-slate-800 text-slate-200">
       {/* Top Header & New Project Button */}
       <div className="p-4 border-b border-slate-800 space-y-3">
         <div className="flex items-center justify-between">

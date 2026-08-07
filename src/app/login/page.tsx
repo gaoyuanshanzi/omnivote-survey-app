@@ -6,8 +6,8 @@ import { Vote, Lock, User, KeyRound, AlertCircle, ArrowRight, ShieldCheck } from
 
 export default function LoginPage() {
   const router = useRouter();
-  const [id, setId] = useState('admin');
-  const [password, setPassword] = useState('123jesus');
+  const [id, setId] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 

@@ -115,9 +115,9 @@ export default function AdminPage() {
           />
         )}
 
-        {/* Panel 1: Sidebar Directory (PC: 22%-28% fixed width, Mobile: Sliding Drawer) */}
+        {/* Panel 1: Sidebar Directory (PC: 3분할 1열, Mobile: Sliding Drawer) */}
         <aside
-          className={`fixed lg:relative z-50 top-0 bottom-0 left-0 w-80 lg:w-1/4 max-w-xs h-full transform transition-transform duration-300 ease-in-out ${
+          className={`fixed lg:static z-50 lg:z-auto top-0 bottom-0 left-0 w-80 lg:w-72 xl:w-80 shrink-0 h-full bg-slate-900 transition-transform duration-300 ease-in-out ${
             isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
         >
@@ -166,10 +166,10 @@ export default function AdminPage() {
         </div>
 
         {/* PC: Panels 2 & 3 Split (Left Main: Question Creator, Right Main: Dashboard) */}
-        <main className="flex-1 flex flex-col lg:flex-row overflow-hidden pb-14 lg:pb-0">
+        <main className="flex-1 flex flex-col lg:flex-row overflow-hidden pb-14 lg:pb-0 min-w-0">
           {/* Panel 2: Question Creation Zone (Center) */}
           <div
-            className={`flex-1 lg:w-3/8 h-full border-r border-slate-800 overflow-hidden ${
+            className={`flex-1 min-w-0 h-full border-r border-slate-800 overflow-hidden ${
               mobileTab === 'CREATOR' ? 'block' : 'hidden lg:block'
             }`}
           >
@@ -182,7 +182,7 @@ export default function AdminPage() {
 
           {/* Panel 3: Dashboard Zone (Right) */}
           <div
-            className={`flex-1 lg:w-3/8 h-full overflow-hidden ${
+            className={`flex-1 min-w-0 h-full overflow-hidden ${
               mobileTab === 'DASHBOARD' ? 'block' : 'hidden lg:block'
             }`}
           >
