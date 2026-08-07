@@ -5,11 +5,10 @@ import { Vote, LogOut, Menu, FolderPlus, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface NavbarProps {
-  onToggleMobileDrawer?: () => void;
   onNewProject?: () => void;
 }
 
-export default function Navbar({ onToggleMobileDrawer, onNewProject }: NavbarProps) {
+export default function Navbar({ onNewProject }: NavbarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -25,15 +24,6 @@ export default function Navbar({ onToggleMobileDrawer, onNewProject }: NavbarPro
     <header className="h-16 bg-white border-b border-slate-200 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-4 lg:px-6 shadow-xs">
       {/* Left Branding */}
       <div className="flex items-center gap-3">
-        {onToggleMobileDrawer && (
-          <button
-            onClick={onToggleMobileDrawer}
-            className="md:hidden p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            title="프로젝트 목록 열기"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
             <Vote className="w-5 h-5 text-white" />

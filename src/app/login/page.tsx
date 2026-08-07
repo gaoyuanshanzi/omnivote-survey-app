@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Vote, Lock, User, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Vote, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,18 +54,6 @@ export default function LoginPage() {
           <p className="text-xs text-slate-500 mt-1 font-medium">투표 서비스 관리자 시스템 접속</p>
         </div>
 
-        {/* Login Credentials Notice Box */}
-        <div className="mb-6 p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-center gap-3">
-          <ShieldCheck className="w-5 h-5 text-indigo-600 shrink-0" />
-          <div>
-            <span className="font-bold block text-indigo-950">관리자 계정 안내</span>
-            <span className="text-[11px] text-indigo-800">
-              아이디: <code className="bg-indigo-100 px-1.5 py-0.5 rounded text-indigo-950 font-mono font-bold">admin</code> | 비밀번호:{' '}
-              <code className="bg-indigo-100 px-1.5 py-0.5 rounded text-indigo-950 font-mono font-bold">123jesus</code>
-            </span>
-          </div>
-        </div>
-
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -79,7 +67,7 @@ export default function LoginPage() {
                 required
                 value={id}
                 onChange={e => setId(e.target.value)}
-                placeholder="관리자 아이디 입력 (admin)"
+                placeholder="아이디를 입력하세요"
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all"
               />
             </div>
@@ -96,7 +84,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="비밀번호 입력 (123jesus)"
+                placeholder="비밀번호를 입력하세요"
                 className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all"
               />
             </div>

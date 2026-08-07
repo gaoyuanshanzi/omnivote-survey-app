@@ -6,17 +6,15 @@ import SidebarDirectory from '@/components/SidebarDirectory';
 import QuestionCreator from '@/components/QuestionCreator';
 import ResultsDashboard from '@/components/ResultsDashboard';
 import { ProjectItem } from '@/lib/types';
-import { Layers, BarChart3, X } from 'lucide-react';
+import { Layers, BarChart3 } from 'lucide-react';
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<'CREATOR' | 'DASHBOARD'>('CREATOR');
+  const [mobileTab, setMobileTab] = useState<'SIDEBAR' | 'CREATOR' | 'DASHBOARD'>('SIDEBAR');
   const [isNewProjectMode, setIsNewProjectMode] = useState(false);
 
-  // Fetch projects list
   const fetchProjects = async () => {
     try {
       const res = await fetch('/api/projects');
@@ -40,27 +38,23 @@ export default function AdminPage() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId) || null;
 
-  // New Project Action: reset form to clean project state
   const handleNewProject = () => {
     setSelectedProjectId(null);
     setIsNewProjectMode(true);
-    setIsMobileDrawerOpen(false);
+    setMobileTab('CREATOR');
   };
 
-  // Select project action
   const handleSelectProject = (id: string) => {
     setSelectedProjectId(id);
     setIsNewProjectMode(false);
-    setIsMobileDrawerOpen(false);
+    setMobileTab('CREATOR');
   };
 
-  // Save / Update Project Action
   const handleSaveProject = async (updatedData: Partial<ProjectItem>) => {
     try {
       const isEdit = !!updatedData.id;
       const url = isEdit ? `/api/projects/${updatedData.id}` : '/api/projects';
       const method = isEdit ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -77,11 +71,9 @@ export default function AdminPage() {
     }
   };
 
-  // Delete project action
   const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('이 투표 프로젝트를 정말 삭제하시겠습니까? 관련 데이터가 모두 삭제됩니다.')) return;
-
+    if (!confirm('이 투표 프로젝트를 정말 삭제하시겠습니까?')) return;
     try {
       const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -98,81 +90,93 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100 text-slate-900 overflow-hidden font-sans">
-      {/* Top Navbar Header */}
-      <Navbar
-        onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-        onNewProject={handleNewProject}
-      />
+    /*
+     * LAYOUT STRATEGY:
+     * - Navbar: fixed at top, h-16
+     * - Below navbar: flex row (sidebar | main)
+     * - Sidebar: STATIC in flow, fixed width, never overlaps content
+     * - Main: flex-1, split into creator + dashboard columns
+     * - Mobile: tab-based single column, no overlapping
+     */
+    <div className="h-screen flex flex-col bg-slate-100 overflow-hidden">
 
-      {/* Main Container */}
-      <div className="flex-1 flex overflow-hidden relative bg-slate-100">
-        {/* Mobile Sliding Drawer Overlay */}
-        {isMobileDrawerOpen && (
-          <div
-            onClick={() => setIsMobileDrawerOpen(false)}
-            className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs animate-fade-in"
+      {/* ── NAVBAR (h-16, z-30) ── */}
+      <div className="shrink-0 z-30 bg-white border-b border-slate-200">
+        <Navbar onNewProject={handleNewProject} />
+      </div>
+
+      {/* ── BODY: fills remaining height ── */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+
+        {/* ── SIDEBAR: static in flow on desktop, hidden on mobile ── */}
+        <aside className="hidden lg:flex lg:flex-col w-72 xl:w-80 shrink-0 h-full border-r border-slate-200 bg-white overflow-hidden">
+          <SidebarDirectory
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={handleSelectProject}
+            onNewProject={handleNewProject}
+            onDeleteProject={handleDeleteProject}
           />
-        )}
-
-        {/* Panel 1: Sidebar Directory (PC: 3분할 1열 flex-row, Mobile: Drawer under Top-16 Navbar) */}
-        <aside
-          className={`fixed md:static z-50 md:z-auto top-16 md:top-0 bottom-0 left-0 w-80 md:w-72 xl:w-80 shrink-0 h-[calc(100vh-4rem)] md:h-full bg-white transition-transform duration-300 ease-in-out shadow-xl md:shadow-none ${
-            isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-          }`}
-        >
-          <div className="h-full relative">
-            {/* Mobile close button inside drawer */}
-            <button
-              onClick={() => setIsMobileDrawerOpen(false)}
-              className="md:hidden absolute top-3 right-3 z-50 p-1.5 rounded-lg text-slate-500 hover:text-slate-900 bg-slate-100"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <SidebarDirectory
-              projects={projects}
-              selectedProjectId={selectedProjectId}
-              onSelectProject={handleSelectProject}
-              onNewProject={handleNewProject}
-              onDeleteProject={handleDeleteProject}
-            />
-          </div>
         </aside>
 
-        {/* Mobile Tab Switcher Bar */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-white/95 border-t border-slate-200 backdrop-blur grid grid-cols-2 p-1.5 gap-2 shadow-lg">
-          <button
-            onClick={() => setMobileTab('CREATOR')}
-            className={`flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
-              mobileTab === 'CREATOR'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>[투표 만들기]</span>
-          </button>
-          <button
-            onClick={() => setMobileTab('DASHBOARD')}
-            className={`flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
-              mobileTab === 'DASHBOARD'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>[결과 대시보드]</span>
-          </button>
+        {/* ── MOBILE: tab switcher ── */}
+        <div className="lg:hidden flex-1 flex flex-col overflow-hidden min-h-0">
+          {/* Mobile tab bar */}
+          <div className="shrink-0 grid grid-cols-3 bg-white border-b border-slate-200 p-1.5 gap-1.5">
+            {([
+              { id: 'SIDEBAR', label: '디렉토리', icon: '📁' },
+              { id: 'CREATOR', label: '투표 만들기', icon: '✏️' },
+              { id: 'DASHBOARD', label: '결과', icon: '📊' },
+            ] as const).map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setMobileTab(tab.id)}
+                className={`py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  mobileTab === tab.id
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile panel */}
+          <div className="flex-1 overflow-hidden min-h-0">
+            {mobileTab === 'SIDEBAR' && (
+              <div className="h-full overflow-hidden bg-white">
+                <SidebarDirectory
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  onSelectProject={handleSelectProject}
+                  onNewProject={handleNewProject}
+                  onDeleteProject={handleDeleteProject}
+                />
+              </div>
+            )}
+            {mobileTab === 'CREATOR' && (
+              <div className="h-full overflow-hidden">
+                <QuestionCreator
+                  project={isNewProjectMode ? null : selectedProject}
+                  onSaveProject={handleSaveProject}
+                  isNew={isNewProjectMode}
+                />
+              </div>
+            )}
+            {mobileTab === 'DASHBOARD' && (
+              <div className="h-full overflow-hidden">
+                <ResultsDashboard project={selectedProject} onRefreshProject={fetchProjects} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* PC: Panels 2 & 3 Split (Left Main: Question Creator, Right Main: Dashboard) */}
-        <main className="flex-1 flex flex-col md:flex-row overflow-hidden pb-14 md:pb-0 min-w-0 bg-slate-100">
-          {/* Panel 2: Question Creation Zone (Center) */}
-          <div
-            className={`flex-1 min-w-0 h-full border-r border-slate-200 overflow-hidden ${
-              mobileTab === 'CREATOR' ? 'block' : 'hidden md:block'
-            }`}
-          >
+        {/* ── DESKTOP: Creator + Dashboard side by side ── */}
+        <main className="hidden lg:flex flex-1 overflow-hidden min-h-0 min-w-0">
+          {/* Panel 2: Question Creator */}
+          <div className="flex-1 min-w-0 h-full border-r border-slate-200 overflow-hidden">
             <QuestionCreator
               project={isNewProjectMode ? null : selectedProject}
               onSaveProject={handleSaveProject}
@@ -180,15 +184,12 @@ export default function AdminPage() {
             />
           </div>
 
-          {/* Panel 3: Dashboard Zone (Right) */}
-          <div
-            className={`flex-1 min-w-0 h-full overflow-hidden ${
-              mobileTab === 'DASHBOARD' ? 'block' : 'hidden md:block'
-            }`}
-          >
+          {/* Panel 3: Results Dashboard */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
             <ResultsDashboard project={selectedProject} onRefreshProject={fetchProjects} />
           </div>
         </main>
+
       </div>
     </div>
   );
