@@ -92,7 +92,7 @@ export default function AdminPage() {
       }
 
       // Build final list based ONLY on server projects (no ghost local-only projects)
-      const finalProjects = serverProjects.map(sp => {
+      const mappedProjects = serverProjects.map(sp => {
         let mergedP = { ...sp };
 
         // Apply status lock if user recently changed status (within 30s)
@@ -115,6 +115,23 @@ export default function AdminPage() {
 
         return mergedP;
       });
+
+      // Deduplicate projects with identical titles (keep the one with more responses/newer)
+      const titleMap = new Map<string, ProjectItem>();
+      mappedProjects.forEach(p => {
+        const existing = titleMap.get(p.title);
+        if (!existing) {
+          titleMap.set(p.title, p);
+        } else {
+          if ((p.responseCount || 0) > (existing.responseCount || 0)) {
+            fetch(`/api/projects/${existing.id}`, { method: 'DELETE' }).catch(() => {});
+            titleMap.set(p.title, p);
+          } else {
+            fetch(`/api/projects/${p.id}`, { method: 'DELETE' }).catch(() => {});
+          }
+        }
+      });
+      const finalProjects = Array.from(titleMap.values());
 
       setProjects(finalProjects);
       setLocalCache(finalProjects);
