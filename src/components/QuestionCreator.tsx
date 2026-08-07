@@ -214,7 +214,7 @@ export default function QuestionCreator({ project, onSaveProject, isNew = false 
       ]);
     }
     setMessage(null);
-  }, [project]);
+  }, [project?.id, isNew]);
 
   const addQuestion = (type: QuestionType) => {
     const newQId = `q-${Date.now()}-${questions.length + 1}`;
